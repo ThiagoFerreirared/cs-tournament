@@ -215,9 +215,9 @@ a,button,[role="button"]{transition:color var(--transition-interactive),backgrou
 }
 </style>
 
-  <!-- Firebase Compat SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <!-- Firebase Compat SDK (v9 compat - funciona como script normal) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyBXDdocjCL9cBvF1b30Xe3KIF2Prd3_qCs",
@@ -833,7 +833,7 @@ function showTeamModal(id) {
   document.getElementById('team-modal').classList.add('open');
 }
 function closeTeamModal() { document.getElementById('team-modal').classList.remove('open'); }
-function deleteTeamFromModal() {
+async function deleteTeamFromModal() {
   const t = state.teams.find(x=>x.id===state.selectedTeamId);
   if(confirm('Remover o time "' + (t?t.name:'') + '"?')) {
     deleteTeam(state.selectedTeamId);
@@ -853,7 +853,7 @@ function openDrawModal() {
 }
 function closeDrawModal() { document.getElementById('draw-modal').classList.remove('open'); }
 
-function performDraw() {
+async function performDraw() {
   const teams = shuffle(state.teams);
   let size = 2;
   while(size < teams.length) size *= 2;
