@@ -26,13 +26,25 @@
     .topbar {
       background:var(--color-surface); border-bottom:1px solid var(--color-border);
       padding:.75rem 1.5rem; display:flex; align-items:center; justify-content:space-between;
-      position:sticky; top:0; z-index:100;
+      position:sticky; top:0; z-index:100; gap:1rem;
     }
     .topbar-logo { display:flex; align-items:center; gap:.5rem; font-family:var(--font-display); font-size:1.15rem; font-weight:700; color:var(--color-text); text-decoration:none; }
     .topbar-logo svg { color:var(--color-primary); }
+    .topbar-actions { display:flex; align-items:center; gap:.75rem; }
     .live-badge { display:flex; align-items:center; gap:.4rem; background:var(--color-primary-highlight); color:var(--color-primary); border-radius:var(--radius-full); padding:3px .75rem; font-size:.75rem; font-weight:700; letter-spacing:.06em; }
     .live-dot { width:7px; height:7px; border-radius:50%; background:var(--color-primary); animation: pulse 1.4s ease-in-out infinite; }
     @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+    /* NOVO: botão inscrição na topbar */
+    .btn-topbar {
+      display:inline-flex; align-items:center; gap:.4rem;
+      background:var(--color-primary); color:#fff;
+      font-family:var(--font-display); font-size:.85rem; font-weight:700; letter-spacing:.04em;
+      border:none; border-radius:var(--radius-md); padding:.45rem 1rem;
+      text-decoration:none; cursor:pointer; white-space:nowrap;
+      box-shadow:0 2px 8px oklch(from #ff4d2e l c h / 0.35);
+      transition: background .18s, transform .1s;
+    }
+    .btn-topbar:hover { background:#e03f22; transform:translateY(-1px); }
 
     /* HERO */
     .hero {
@@ -42,7 +54,18 @@
     }
     .hero-tag { display:inline-flex; align-items:center; gap:.4rem; background:var(--color-primary-highlight); color:var(--color-primary); border-radius:var(--radius-full); padding:3px .85rem; font-size:.75rem; font-weight:700; letter-spacing:.06em; margin-bottom:1rem; }
     .hero h1 { font-family:var(--font-display); font-size:clamp(1.8rem,5vw,3rem); font-weight:700; letter-spacing:.03em; line-height:1.1; margin-bottom:.75rem; }
-    .hero-sub { font-size:.9rem; color:var(--color-text-muted); }
+    .hero-sub { font-size:.9rem; color:var(--color-text-muted); margin-bottom:1.5rem; }
+    /* NOVO: botão hero */
+    .btn-hero {
+      display:inline-flex; align-items:center; gap:.5rem;
+      background:var(--color-primary); color:#fff;
+      font-family:var(--font-display); font-size:1.1rem; font-weight:700; letter-spacing:.04em;
+      border:none; border-radius:var(--radius-md); padding:.8rem 2rem;
+      text-decoration:none; cursor:pointer;
+      box-shadow:0 4px 16px oklch(from #ff4d2e l c h / 0.4);
+      transition: background .18s, transform .1s;
+    }
+    .btn-hero:hover { background:#e03f22; transform:translateY(-2px); }
 
     /* STATS */
     .stats-section { max-width:900px; margin:2rem auto; padding:0 1.5rem; }
@@ -81,7 +104,6 @@
     .b-team.loser { opacity:.4; }
     .b-team-name { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500; }
     .b-score { font-family:var(--font-display); font-weight:700; font-size:.85rem; min-width:16px; text-align:right; }
-    .b-empty { font-size:.78rem; color:var(--color-text-faint); padding:.5rem .75rem; font-style:italic; }
 
     /* TEAMS LIST */
     .teams-section { max-width:900px; margin:0 auto 3rem; padding:0 1.5rem; }
@@ -98,9 +120,24 @@
     .empty-state { text-align:center; padding:3rem 1rem; color:var(--color-text-muted); }
     .empty-state p { font-size:.88rem; margin-top:.5rem; }
 
+    /* NOVO: banner CTA inscrição */
+    .cta-banner {
+      max-width:900px; margin:0 auto 2rem; padding:0 1.5rem;
+    }
+    .cta-inner {
+      background:linear-gradient(135deg, var(--color-primary-highlight), oklch(from #ff4d2e l c h / 0.05));
+      border:1px solid oklch(from #ff4d2e l c h / 0.3);
+      border-radius:var(--radius-xl); padding:1.5rem 2rem;
+      display:flex; align-items:center; justify-content:space-between; gap:1.5rem; flex-wrap:wrap;
+    }
+    .cta-text { font-family:var(--font-display); font-size:1.2rem; font-weight:700; }
+    .cta-sub { font-size:.82rem; color:var(--color-text-muted); margin-top:.2rem; }
+
     @media(max-width:600px) {
       .hero { padding:2rem 1rem 1.5rem; }
       .stats-grid { grid-template-columns:1fr 1fr; }
+      .topbar { flex-wrap:wrap; }
+      .cta-inner { flex-direction:column; text-align:center; }
     }
   </style>
 </head>
@@ -116,8 +153,12 @@
       </svg>
       Lumix Fibra CS2
     </a>
-    <div class="live-badge">
-      <span class="live-dot"></span> AO VIVO
+    <div class="topbar-actions">
+      <!-- NOVO -->
+      <a href="inscricao.html" class="btn-topbar">📝 Inscrever time</a>
+      <div class="live-badge">
+        <span class="live-dot"></span> AO VIVO
+      </div>
     </div>
   </header>
 
@@ -126,6 +167,8 @@
     <div class="hero-tag">🏆 1º Campeonato</div>
     <h1>Lumix Fibra CS2</h1>
     <p class="hero-sub">15, 16 e 17 de maio &nbsp;•&nbsp; 100% online &nbsp;•&nbsp; Inscrição R$ 250 &nbsp;•&nbsp; Premiação R$ 2.300</p>
+    <!-- NOVO -->
+    <a href="inscricao.html" class="btn-hero">📝 Inscrever meu time</a>
   </section>
 
   <!-- CHAMPION -->
@@ -161,6 +204,17 @@
       </div>
     </div>
   </section>
+
+  <!-- NOVO: banner CTA -->
+  <div class="cta-banner" id="cta-banner">
+    <div class="cta-inner">
+      <div>
+        <div class="cta-text">Vagas abertas — garanta a sua!</div>
+        <div class="cta-sub">Inscrição R$ 250 via PIX · Mínimo 5 jogadores</div>
+      </div>
+      <a href="inscricao.html" class="btn-topbar" style="font-size:1rem;padding:.65rem 1.5rem;">📝 Inscrever agora</a>
+    </div>
+  </div>
 
   <!-- BRACKET -->
   <section class="bracket-section">
@@ -199,7 +253,6 @@
       return Math.abs(h)%360;
     }
 
-    // Times
     db.collection('teams').onSnapshot(snap => {
       document.getElementById('stat-teams').textContent = snap.size;
       const grid = document.getElementById('teams-public');
@@ -220,18 +273,21 @@
       }).join('');
     });
 
-    // Torneio (fase + campeão)
     db.collection('tournament').doc('main').onSnapshot(snap => {
       const d = snap.data();
       if(!d) return;
       if(d.phase) document.getElementById('stat-phase').textContent = d.phase;
+      // Esconde CTA se inscrições fechadas
+      if(d.registrationOpen === false) {
+        const cta = document.getElementById('cta-banner');
+        if(cta) cta.style.display = 'none';
+      }
       if(d.champion) {
         document.getElementById('champion-name').textContent = d.champion.name || d.champion;
         document.getElementById('champion-section').style.display = 'block';
       }
     });
 
-    // Bracket
     db.collection('tournament').doc('bracket').onSnapshot(snap => {
       const data = snap.data();
       if(!data || !data.rounds || data.rounds.length === 0) return;
