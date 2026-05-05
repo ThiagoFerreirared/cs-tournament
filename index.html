@@ -197,7 +197,7 @@ a,button,[role="button"]{transition:color var(--transition-interactive),backgrou
 .separator{height:1px;background:var(--color-divider);margin:var(--space-6) 0;}
 .player-row{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-4);background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius-md);margin-bottom:var(--space-2);}
 .player-num{font-family:var(--font-display);font-weight:700;color:var(--color-text-faint);min-width:20px;}
-.reg-form{max-width:560px;}
+.reg-form{max-width:1000px;margin:0 auto;}
 
 .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--color-surface);border-top:1px solid var(--color-border);padding:var(--space-2) var(--space-4);gap:var(--space-1);z-index:100;}
 .mobile-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:var(--space-2);border-radius:var(--radius-md);font-size:10px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.04em;}
@@ -206,12 +206,31 @@ a,button,[role="button"]{transition:color var(--transition-interactive),backgrou
 
 @media(max-width:768px){
   .topbar-nav{display:none;}
-  .payment-grid{grid-template-columns:1fr !important;}
   .form-row{grid-template-columns:1fr;}
   .main-content{padding:var(--space-6) var(--space-4);}
   .stats-row{grid-template-columns:1fr 1fr;}
   .mobile-nav{display:flex;}
   .main-content{padding-bottom:80px;}
+}
+
+/* Responsive payment section */
+.payment-grid {
+  display: grid;
+  grid-template-columns: min-content 1fr;
+  gap: var(--space-6);
+  align-items: start;
+  justify-items: start;
+}
+@media (min-width: 768px) {
+  .payment-grid {
+    grid-template-columns: 250px 1fr;
+  }
+}
+/* QR code image sizing */
+#pix-qrcode {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
 }
 </style>
 
@@ -267,7 +286,7 @@ a,button,[role="button"]{transition:color var(--transition-interactive),backgrou
       <div class="page-header">
         <div>
           <h1 class="page-title">1º Campeonato Lumix Fibra de CS2</h1>
-          <p class="page-subtitle" id="tournament-subtitle">15, 16 e 17 de maio · 100% online · inscrição R$ 250</p>
+          <p class="page-subtitle" id="tournament-subtitle">15, 16 e 17 de maio · 100% online · <span class="badge badge-primary" style="color:#fff;">inscrição R$ 250</span></p>
         </div>
         <div style="display:flex;gap:var(--space-2);">
           <button class="btn btn-secondary" onclick="showPage('register')">
@@ -283,17 +302,22 @@ a,button,[role="button"]{transition:color var(--transition-interactive),backgrou
 
       <div class="card" style="margin-bottom:var(--space-6);background:linear-gradient(135deg,var(--color-surface),oklch(from var(--color-primary) l c h / 0.08));">
         <div class="card-header">
-          <span class="card-title">Premiação e Inscrição</span>
-          <span class="badge badge-primary">PIX</span>
-        </div>
+          <span class="card-title">Premiação</span>
+                  </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--space-4);margin-bottom:var(--space-5);">
           <div class="stat-card"><div class="stat-label">1º Lugar</div><div class="stat-value" style="color:var(--color-primary)">R$ 1500</div></div>
           <div class="stat-card"><div class="stat-label">2º Lugar</div><div class="stat-value">R$ 500</div></div>
           <div class="stat-card"><div class="stat-label">3º Lugar</div><div class="stat-value">R$ 300</div></div>
-          <div class="stat-card"><div class="stat-label">Inscrição</div><div class="stat-value" style="color:var(--color-primary)">R$ 250</div></div>
-        </div>
-        <div style="font-size:var(--text-sm);color:var(--color-text-muted);">Inscrição via PIX — QR Code disponível na tela de inscrição.</div>
-      </div>
+                  </div>
+              </div>
+
+<div class="card" style="margin-bottom:var(--space-6);">
+  <div class="card-header">
+    <span class="card-title">Inscrição</span>
+    <span class="badge badge-primary">PIX</span>
+  </div>
+  <div class="stat-card"><div class="stat-label">Valor</div><div class="stat-value" style="color:var(--color-primary)">R$ 250</div></div>
+  </div>
 
       <div class="stats-row">
         <div class="stat-card">
@@ -373,9 +397,9 @@ a,button,[role="button"]{transition:color var(--transition-interactive),backgrou
             <span class="card-title">Pagamento da Inscrição</span>
             <span class="badge badge-warning">R$ 250</span>
           </div>
-          <div class="payment-grid" style="display:grid;grid-template-columns:220px 1fr;gap:var(--space-6);align-items:center;">
+          <div class="payment-grid">
             <div style="background:#fff;padding:var(--space-4);border-radius:var(--radius-lg);display:flex;justify-content:center;">
-              <img id="pix-qrcode" src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=PIX%3A%20t.redbala%40gmail.com%20%7C%20Valor%3A%20R%24%20250%20%7C%20Lumix%20Fibra%20CS2" alt="QR Code PIX da inscrição" width="180" height="180" loading="lazy" style="width:180px;height:180px;">
+              <img id="pix-qrcode" src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=PIX%3A%20t.redbala%40gmail.com%20%7C%20Valor%3A%20R%24%20250%20%7C%20Lumix%20Fibra%20CS2" alt="QR Code PIX da inscrição" loading="lazy" style="width:100%;max-width:220px;height:auto;">
             </div>
             <div>
               <div style="font-family:var(--font-display);font-size:var(--text-lg);font-weight:700;margin-bottom:var(--space-3);">PIX para inscrição</div>
@@ -384,7 +408,7 @@ a,button,[role="button"]{transition:color var(--transition-interactive),backgrou
                 <label class="form-label">Chave PIX</label>
                 <div style="display:flex;gap:var(--space-2);">
                   <input class="form-input" id="pix-key" value="t.redbala@gmail.com" readonly>
-                  <button class="btn btn-secondary" type="button" onclick="copyPixKey()">Copiar</button>
+                  <button class="btn btn-secondary" type="button" onclick="copyPixKey()">Copiar PIX</button>
                 </div>
               </div>
               <div class="form-group" style="margin-bottom:0;">

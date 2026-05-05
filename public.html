@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1º Campeonato Lumix Fibra CS2 – Acompanhe ao vivo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@300..700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-bg:#0d0e10; --color-surface:#141518; --color-surface-2:#1a1b1f;
+      --color-surface-offset:#1f2025; --color-border:#2e3038; --color-divider:#22242a;
+      --color-text:#e2e4ec; --color-text-muted:#7a7d8a; --color-text-faint:#3d404a;
+      --color-primary:#ff4d2e; --color-primary-highlight:#2a1c18;
+      --color-success:#4caf6e; --color-success-highlight:#1a2d22;
+      --color-warning:#f0a030; --color-gold:#f0c040;
+      --font-display:'Rajdhani',sans-serif; --font-body:'Inter',sans-serif;
+      --radius-md:.5rem; --radius-lg:.75rem; --radius-xl:1rem; --radius-full:9999px;
+      --shadow-sm:0 1px 2px oklch(0 0 0 / 0.3); --shadow-md:0 4px 12px oklch(0 0 0 / 0.4);
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    html { -webkit-font-smoothing:antialiased; }
+    body { min-height:100dvh; font-family:var(--font-body); background:var(--color-bg); color:var(--color-text); }
+
+    /* TOPBAR */
+    .topbar {
+      background:var(--color-surface); border-bottom:1px solid var(--color-border);
+      padding:.75rem 1.5rem; display:flex; align-items:center; justify-content:space-between;
+      position:sticky; top:0; z-index:100;
+    }
+    .topbar-logo { display:flex; align-items:center; gap:.5rem; font-family:var(--font-display); font-size:1.15rem; font-weight:700; color:var(--color-text); text-decoration:none; }
+    .topbar-logo svg { color:var(--color-primary); }
+    .live-badge { display:flex; align-items:center; gap:.4rem; background:var(--color-primary-highlight); color:var(--color-primary); border-radius:var(--radius-full); padding:3px .75rem; font-size:.75rem; font-weight:700; letter-spacing:.06em; }
+    .live-dot { width:7px; height:7px; border-radius:50%; background:var(--color-primary); animation: pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+    /* HERO */
+    .hero {
+      text-align:center; padding:3rem 1.5rem 2rem;
+      background: radial-gradient(ellipse at 50% 0%, oklch(from #ff4d2e l c h / 0.1) 0%, transparent 65%);
+      border-bottom:1px solid var(--color-divider);
+    }
+    .hero-tag { display:inline-flex; align-items:center; gap:.4rem; background:var(--color-primary-highlight); color:var(--color-primary); border-radius:var(--radius-full); padding:3px .85rem; font-size:.75rem; font-weight:700; letter-spacing:.06em; margin-bottom:1rem; }
+    .hero h1 { font-family:var(--font-display); font-size:clamp(1.8rem,5vw,3rem); font-weight:700; letter-spacing:.03em; line-height:1.1; margin-bottom:.75rem; }
+    .hero-sub { font-size:.9rem; color:var(--color-text-muted); }
+
+    /* STATS */
+    .stats-section { max-width:900px; margin:2rem auto; padding:0 1.5rem; }
+    .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; }
+    .stat-card {
+      background:var(--color-surface); border:1px solid var(--color-border);
+      border-radius:var(--radius-lg); padding:1.25rem 1.5rem; text-align:center;
+      box-shadow:var(--shadow-sm);
+    }
+    .stat-label { font-size:.72rem; text-transform:uppercase; letter-spacing:.07em; color:var(--color-text-muted); margin-bottom:.5rem; }
+    .stat-value { font-family:var(--font-display); font-size:2.2rem; font-weight:700; line-height:1; }
+    .stat-sub { font-size:.72rem; color:var(--color-text-muted); margin-top:.25rem; }
+
+    /* CHAMPION */
+    .champion-section { max-width:900px; margin:0 auto 1.5rem; padding:0 1.5rem; display:none; }
+    .champion-banner {
+      background:linear-gradient(135deg,oklch(from #f0c040 l c h / 0.12),oklch(from #ff4d2e l c h / 0.08));
+      border:1px solid var(--color-gold); border-radius:var(--radius-xl);
+      padding:2rem; text-align:center;
+    }
+    .champion-crown { font-size:2.5rem; margin-bottom:.5rem; }
+    .champion-title { font-family:var(--font-display); font-size:clamp(1.5rem,4vw,2.5rem); font-weight:700; color:var(--color-gold); }
+    .champion-sub { font-size:.85rem; color:var(--color-text-muted); margin-top:.4rem; }
+
+    /* BRACKET */
+    .bracket-section { max-width:1100px; margin:0 auto 3rem; padding:0 1.5rem; }
+    .section-title { font-family:var(--font-display); font-size:1.2rem; font-weight:700; margin-bottom:1rem; letter-spacing:.02em; }
+    .bracket-tree { display:flex; gap:0; align-items:flex-start; overflow-x:auto; padding:.5rem 0 1.5rem; }
+    .b-round { display:flex; flex-direction:column; }
+    .b-round-head { font-family:var(--font-display); font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--color-text-muted); text-align:center; padding:.5rem 1.5rem; border-bottom:1px solid var(--color-border); margin-bottom:.5rem; }
+    .b-round-matches { display:flex; flex-direction:column; }
+    .b-match { background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); overflow:hidden; width:190px; margin:.5rem .25rem; }
+    .b-team { display:flex; align-items:center; gap:.5rem; padding:.5rem .75rem; font-size:.82rem; }
+    .b-team:not(:last-child) { border-bottom:1px solid var(--color-divider); }
+    .b-team.winner { background:var(--color-success-highlight); color:var(--color-success); font-weight:700; }
+    .b-team.loser { opacity:.4; }
+    .b-team-name { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500; }
+    .b-score { font-family:var(--font-display); font-weight:700; font-size:.85rem; min-width:16px; text-align:right; }
+    .b-empty { font-size:.78rem; color:var(--color-text-faint); padding:.5rem .75rem; font-style:italic; }
+
+    /* TEAMS LIST */
+    .teams-section { max-width:900px; margin:0 auto 3rem; padding:0 1.5rem; }
+    .teams-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:.75rem; }
+    .team-pill {
+      background:var(--color-surface); border:1px solid var(--color-border);
+      border-radius:var(--radius-lg); padding:.75rem 1rem;
+      display:flex; align-items:center; gap:.75rem;
+    }
+    .team-avatar { width:38px; height:38px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:.8rem; font-weight:700; color:#fff; flex-shrink:0; }
+    .team-info-name { font-family:var(--font-display); font-weight:700; font-size:.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .team-info-meta { font-size:.72rem; color:var(--color-text-muted); }
+
+    .empty-state { text-align:center; padding:3rem 1rem; color:var(--color-text-muted); }
+    .empty-state p { font-size:.88rem; margin-top:.5rem; }
+
+    @media(max-width:600px) {
+      .hero { padding:2rem 1rem 1.5rem; }
+      .stats-grid { grid-template-columns:1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <a class="topbar-logo" href="#">
+      <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
+        <polygon points="14,2 26,8 26,20 14,26 2,20 2,8" fill="none" stroke="currentColor" stroke-width="2"/>
+        <circle cx="14" cy="14" r="4" fill="currentColor"/>
+        <line x1="14" y1="6" x2="14" y2="10" stroke="currentColor" stroke-width="2"/>
+        <line x1="14" y1="18" x2="14" y2="22" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      Lumix Fibra CS2
+    </a>
+    <div class="live-badge">
+      <span class="live-dot"></span> AO VIVO
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-tag">🏆 1º Campeonato</div>
+    <h1>Lumix Fibra CS2</h1>
+    <p class="hero-sub">15, 16 e 17 de maio &nbsp;•&nbsp; 100% online &nbsp;•&nbsp; Inscrição R$ 250 &nbsp;•&nbsp; Premiação R$ 2.300</p>
+  </section>
+
+  <!-- CHAMPION -->
+  <div class="champion-section" id="champion-section">
+    <div class="champion-banner">
+      <div class="champion-crown">🏆</div>
+      <div class="champion-title" id="champion-name">—</div>
+      <div class="champion-sub">Campeão do 1º Campeonato Lumix Fibra CS2</div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <section class="stats-section">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Times Inscritos</div>
+        <div class="stat-value" id="stat-teams">0</div>
+        <div class="stat-sub">de 16 vagas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Fase Atual</div>
+        <div class="stat-value" id="stat-phase" style="font-size:1.3rem;padding-top:.4rem;">Inscrição</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Jogos</div>
+        <div class="stat-value" id="stat-matches">0</div>
+        <div class="stat-sub">agendados</div>
+      </div>
+      <div class="stat-card" style="border-color:oklch(from #ff4d2e l c h / 0.4);">
+        <div class="stat-label">Premiação Total</div>
+        <div class="stat-value" style="color:var(--color-gold);">R$2.3k</div>
+        <div class="stat-sub">1º R$1500 · 2º R$500 · 3º R$300</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BRACKET -->
+  <section class="bracket-section">
+    <div class="section-title">⚔️ Chave do Torneio</div>
+    <div id="bracket-public">
+      <div class="empty-state">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:auto;color:#3d404a"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <p>A chave será gerada após o encerramento das inscrições.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TEAMS -->
+  <section class="teams-section">
+    <div class="section-title">🎮 Times Inscritos</div>
+    <div id="teams-public" class="teams-grid">
+      <div class="empty-state" style="grid-column:1/-1"><p>Nenhum time inscrito ainda.</p></div>
+    </div>
+  </section>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyBXDdocjCL9cBvF1b30Xe3KIF2Prd3_qCs",
+      authDomain: "torneio-cs.firebaseapp.com",
+      projectId: "torneio-cs",
+      storageBucket: "torneio-cs.firebasestorage.app",
+      messagingSenderId: "722843986325",
+      appId: "1:722843986325:web:383d2d5e67883840412e9c"
+    });
+    const db = firebase.firestore();
+
+    function strColor(s) {
+      let h=0; for(let c of s) h=(h*31+c.charCodeAt(0))&0xffffffff;
+      return Math.abs(h)%360;
+    }
+
+    // Times
+    db.collection('teams').onSnapshot(snap => {
+      document.getElementById('stat-teams').textContent = snap.size;
+      const grid = document.getElementById('teams-public');
+      if(snap.empty) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><p>Nenhum time inscrito ainda.</p></div>';
+        return;
+      }
+      grid.innerHTML = snap.docs.map(d => {
+        const t = d.data();
+        const hue = strColor(t.name||'');
+        return `<div class="team-pill">
+          <div class="team-avatar" style="background:hsl(${hue},60%,38%)">${(t.tag||t.name||'??').substring(0,2).toUpperCase()}</div>
+          <div>
+            <div class="team-info-name">${t.name||'—'}</div>
+            <div class="team-info-meta">${(t.players||[]).length} jogadores</div>
+          </div>
+        </div>`;
+      }).join('');
+    });
+
+    // Torneio (fase + campeão)
+    db.collection('tournament').doc('main').onSnapshot(snap => {
+      const d = snap.data();
+      if(!d) return;
+      if(d.phase) document.getElementById('stat-phase').textContent = d.phase;
+      if(d.champion) {
+        document.getElementById('champion-name').textContent = d.champion.name || d.champion;
+        document.getElementById('champion-section').style.display = 'block';
+      }
+    });
+
+    // Bracket
+    db.collection('tournament').doc('bracket').onSnapshot(snap => {
+      const data = snap.data();
+      if(!data || !data.rounds || data.rounds.length === 0) return;
+      const rounds = data.rounds;
+      const container = document.getElementById('bracket-public');
+      let html = '<div class="bracket-tree">';
+      rounds.forEach(round => {
+        html += `<div class="b-round"><div class="b-round-head">${round.name}</div><div class="b-round-matches">`;
+        round.matches.forEach(m => {
+          const t1 = m.team1?.name || '—';
+          const t2 = m.team2?.name || '—';
+          const w = m.winnerId;
+          const cls1 = w ? (m.team1?.id === w ? 'winner' : 'loser') : '';
+          const cls2 = w ? (m.team2?.id === w ? 'winner' : 'loser') : '';
+          html += `<div class="b-match">
+            <div class="b-team ${cls1}"><span class="b-team-name">${t1}</span><span class="b-score">${m.score1 ?? ''}</span></div>
+            <div class="b-team ${cls2}"><span class="b-team-name">${t2}</span><span class="b-score">${m.score2 ?? ''}</span></div>
+          </div>`;
+        });
+        html += '</div></div>';
+      });
+      html += '</div>';
+      container.innerHTML = html;
+      document.getElementById('stat-matches').textContent = rounds[0]?.matches?.length || 0;
+    });
+  </script>
+</body>
+</html>
