@@ -214,6 +214,22 @@ a,button,[role="button"]{transition:color var(--transition-interactive),backgrou
   .main-content{padding-bottom:80px;}
 }
 </style>
+
+  <!-- Firebase Compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyBXDdocjCL9cBvF1b30Xe3KIF2Prd3_qCs",
+      authDomain: "torneio-cs.firebaseapp.com",
+      projectId: "torneio-cs",
+      storageBucket: "torneio-cs.firebasestorage.app",
+      messagingSenderId: "722843986325",
+      appId: "1:722843986325:web:383d2d5e67883840412e9c"
+    });
+    window._db = firebase.firestore();
+    console.log("Firebase Compat inicializado.");
+  </script>
 </head>
 <body>
 <div class="app">
@@ -631,7 +647,7 @@ function showPage(name) {
 }
 
 // === REGISTRATION ===
-function registerTeam() {
+async function registerTeam() {
   if(!state.registrationOpen) { showError('reg-error','Inscrições encerradas.'); return; }
   const name = document.getElementById('team-name-input').value.trim();
   const tag = document.getElementById('team-tag-input').value.trim().toUpperCase();
@@ -645,10 +661,18 @@ function registerTeam() {
   if(players.length < 5) { showError('reg-error','Mínimo de 5 jogadores obrigatório.'); return; }
   const paymentNote = document.getElementById('payment-proof-input').value.trim();
   const team = {
-    id: genId(), name, tag: tag||getInitials(name), contact, email, players,
+    name, tag: tag||getInitials(name), contact, email, players,
     paymentStatus:'pendente', paymentAmount:250, paymentNote,
     registeredAt: new Date().toISOString()
   };
+  try {
+    if(window._db) {
+      const docRef = await window._db.collection('teams').add(team);
+      team.id = docRef.id;
+    } else {
+      team.id = genId();
+    }
+  } catch(e) { team.id = genId(); console.error('Firestore error:', e); }
   state.teams.push(team);
   saveState();
   if(Notification.permission === 'granted') sendBrowserNotification('Nova inscrição', `Time ${name} foi cadastrado.`);
@@ -771,8 +795,11 @@ function renderTeamsPage() {
   `).join('');
 }
 
-function deleteTeam(id) {
+async function deleteTeam(id) {
   if(!state.registrationOpen && !confirm('Inscrições fechadas. Remover mesmo assim?')) return;
+  if(window._db) {
+    try { await window._db.collection('teams').doc(id).delete(); } catch(e) { console.error(e); }
+  }
   state.teams = state.teams.filter(t=>t.id!==id);
   saveState();
   renderTeamsPage();
@@ -854,6 +881,11 @@ function performDraw() {
   state.bracketGenerated = true;
   propagateWinners();
   saveState();
+  if(window._db) {
+    try {
+      await window._db.collection('tournament').doc('bracket').set({ rounds: state.bracket, updatedAt: new Date().toISOString() });
+    } catch(e) { console.error(e); }
+  }
   closeDrawModal();
   renderDashboard();
   renderBracketPage();
@@ -944,7 +976,7 @@ function openScoreModal(ri, mi) {
   document.getElementById('score-modal').classList.add('open');
 }
 function closeScoreModal() { document.getElementById('score-modal').classList.remove('open'); }
-function saveScore() {
+async function saveScore() {
   const s1 = parseInt(document.getElementById('score-team1').value);
   const s2 = parseInt(document.getElementById('score-team2').value);
   if(isNaN(s1)||isNaN(s2)) { showError('score-error','Insira placar válido.'); return; }
@@ -965,6 +997,12 @@ function saveScore() {
     state.champion = match.winner;
   }
   saveState();
+  if(window._db) {
+    try {
+      await window._db.collection('tournament').doc('bracket').set({ rounds: state.bracket, updatedAt: new Date().toISOString() });
+      if(state.champion) await window._db.collection('tournament').doc('main').set({ champion: state.champion, updatedAt: new Date().toISOString() }, { merge: true });
+    } catch(e) { console.error(e); }
+  }
   closeScoreModal();
   renderBracketPage();
   renderDashboard();
@@ -1001,8 +1039,16 @@ function sendBrowserNotification(title, body) {
 }
 
 // === RESET ===
-function resetTournament() {
+async function resetTournament() {
   if(!confirm('Resetar TUDO? Times, sorteio e resultados serão apagados.')) return;
+  if(window._db) {
+    try {
+      const snap = await window._db.collection('teams').get();
+      const batch = window._db.batch();
+      snap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    } catch(e) { console.error(e); }
+  }
   state = {teams:[],registrationOpen:true,bracketGenerated:false,bracket:[],champion:null,selectedTeamId:null};
   saveState();
   updateRegStatus();
@@ -1015,6 +1061,33 @@ function resetTournament() {
 updateRegStatus();
 renderDashboard();
 updatePixQrCode();
+
+// Sincronização em tempo real com Firestore
+if(window._db) {
+  window._db.collection('teams').onSnapshot(snap => {
+    state.teams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    saveState();
+    renderDashboard();
+    renderTeamsPage();
+  });
+  window._db.collection('tournament').doc('bracket').onSnapshot(snap => {
+    const data = snap.data();
+    if(data && data.rounds && data.rounds.length > 0) {
+      state.bracket = data.rounds;
+      state.bracketGenerated = true;
+      renderDashboard();
+      renderBracketPage();
+    }
+  });
+  window._db.collection('tournament').doc('main').onSnapshot(snap => {
+    const data = snap.data();
+    if(data && data.champion) {
+      state.champion = data.champion;
+      renderDashboard();
+      renderBracketPage();
+    }
+  });
+}
 </script>
 </body>
 </html>
