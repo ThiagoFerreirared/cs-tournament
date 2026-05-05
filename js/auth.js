@@ -14,7 +14,7 @@ if (!firebase.apps.length) {
 const auth = firebase.auth();
 
 const userMap = {
-  'thiago': 'thiago@torneio.com'
+  'thiago': 'thiago@lumixfibra.com'
 };
 
 function doLogin() {
