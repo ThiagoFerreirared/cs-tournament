@@ -12,15 +12,12 @@ if (!firebase.apps.length) {
 }
 
 const auth = firebase.auth();
-const db = firebase.firestore();
-window._db = db;
 
-// Mapa: usuário → email do Firebase
 const userMap = {
-  'thiago': 'thiago@lumixfibra.com'
+  'thiago': 'thiago@torneio.com'
 };
 
-function login() {
+function doLogin() {
   const user = document.getElementById('login-user').value.trim().toLowerCase();
   const pass = document.getElementById('login-pass').value;
   const err  = document.getElementById('login-error');
@@ -34,7 +31,7 @@ function login() {
     .catch(() => { if(err) err.style.display = 'block'; });
 }
 
-window.doLogin = login;
+window.doLogin = doLogin;
 
 function logout() {
   auth.signOut().then(() => location.href = 'index.html');
