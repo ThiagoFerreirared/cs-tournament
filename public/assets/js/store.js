@@ -8,7 +8,7 @@
  * Modelo:
  *   teams/{id}            → time inscrito
  *   tournament/main       → estado geral (inscrições, fase, campeão)
- *   tournament/bracket    → { rounds }
+ *   tournament/league     → { matches, final }  (pontos corridos + final)
  */
 import {
   collection,
@@ -26,11 +26,11 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db } from "./firebase.js";
-import { createBracket, applyResult } from "./bracket.js";
+import { createLeague, applyMatchResult } from "./league.js";
 import { tournament } from "./config.js";
 
 const settingsRef = doc(db, "tournament", "main");
-const bracketRef = doc(db, "tournament", "bracket");
+const leagueRef = doc(db, "tournament", "league");
 const teamsCol = collection(db, "teams");
 
 const DEFAULT_SETTINGS = {
@@ -39,21 +39,21 @@ const DEFAULT_SETTINGS = {
   champion: null,
 };
 
-const EMPTY_BRACKET = { rounds: [] };
+const EMPTY_LEAGUE = { matches: [], final: null };
 
 /* ------------------------------------------------------------------ *
  * Inicialização
  * ------------------------------------------------------------------ */
 export async function ensureDocs() {
-  const [settingsSnap, bracketSnap] = await Promise.all([
+  const [settingsSnap, leagueSnap] = await Promise.all([
     getDoc(settingsRef),
-    getDoc(bracketRef),
+    getDoc(leagueRef),
   ]);
   if (!settingsSnap.exists()) {
     await setDoc(settingsRef, { ...DEFAULT_SETTINGS, updatedAt: serverTimestamp() });
   }
-  if (!bracketSnap.exists()) {
-    await setDoc(bracketRef, { ...EMPTY_BRACKET, updatedAt: serverTimestamp() });
+  if (!leagueSnap.exists()) {
+    await setDoc(leagueRef, { ...EMPTY_LEAGUE, updatedAt: serverTimestamp() });
   }
 }
 
@@ -74,10 +74,10 @@ export function watchTeams(callback) {
   });
 }
 
-export function watchBracket(callback) {
-  return onSnapshot(bracketRef, (snap) => {
-    const data = snap.exists() ? snap.data() : EMPTY_BRACKET;
-    callback({ rounds: data.rounds || [] });
+export function watchLeague(callback) {
+  return onSnapshot(leagueRef, (snap) => {
+    const data = snap.exists() ? snap.data() : EMPTY_LEAGUE;
+    callback({ matches: data.matches || [], final: data.final || null });
   });
 }
 
@@ -145,10 +145,10 @@ export async function setRegistrationOpen(open) {
   });
 }
 
-/** Reabre inscrições e descarta a chave/campeão existentes. */
+/** Reabre inscrições e descarta a tabela/campeão existentes. */
 export async function reopenRegistration() {
   await Promise.all([
-    setDoc(bracketRef, { ...EMPTY_BRACKET, updatedAt: serverTimestamp() }),
+    setDoc(leagueRef, { ...EMPTY_LEAGUE, updatedAt: serverTimestamp() }),
     updateDoc(settingsRef, {
       registrationOpen: true,
       phase: "Inscrição",
@@ -159,29 +159,38 @@ export async function reopenRegistration() {
 }
 
 /* ------------------------------------------------------------------ *
- * Chave
+ * Liga (pontos corridos + final)
  * ------------------------------------------------------------------ */
-export async function drawBracket(teams, { random = true } = {}) {
-  const rounds = createBracket(teams, { random });
-  await setDoc(bracketRef, { rounds, updatedAt: serverTimestamp() });
+export async function generateLeague(teams, { random = true } = {}) {
+  const league = createLeague(teams, {
+    roundBestOf: tournament.bestOf.round,
+    finalBestOf: tournament.bestOf.final,
+    random,
+  });
+  await setDoc(leagueRef, { ...league, updatedAt: serverTimestamp() });
   await updateDoc(settingsRef, {
     registrationOpen: false,
-    phase: "Em andamento",
+    phase: "Fase de pontos",
     champion: null,
     updatedAt: serverTimestamp(),
   });
 }
 
 /**
- * Registra o resultado de uma partida: recalcula a chave inteira e atualiza
- * fase/campeão de forma atômica.
+ * Registra o resultado de uma partida (fase de pontos ou final), recalcula a
+ * classificação/final e atualiza fase/campeão de forma atômica.
+ * @param {{matches, final}} league  estado atual
+ * @param {Array} teams              lista completa de times
+ * @param {{stage:"rr"|"final", matchId?:string}} target
  */
-export async function reportResult(rounds, roundIndex, matchIndex, score1, score2) {
-  const r = applyResult(rounds, roundIndex, matchIndex, score1, score2);
-  await setDoc(bracketRef, { rounds: r.rounds, updatedAt: serverTimestamp() });
+export async function reportMatch(league, teams, target, score1, score2) {
+  const r = applyMatchResult(league, teams, target, score1, score2);
+  await setDoc(leagueRef, { matches: r.matches, final: r.final, updatedAt: serverTimestamp() });
+
+  const phase = r.champion ? "Finalizado" : r.final?.team1 ? "Final" : "Fase de pontos";
   await updateDoc(settingsRef, {
     champion: r.champion || null,
-    phase: r.champion ? "Finalizado" : "Em andamento",
+    phase,
     updatedAt: serverTimestamp(),
   });
   return r;
@@ -196,7 +205,7 @@ export async function resetTournament() {
   snap.docs.forEach((d) => batch.delete(d.ref));
   await batch.commit();
   await Promise.all([
-    setDoc(bracketRef, { ...EMPTY_BRACKET, updatedAt: serverTimestamp() }),
+    setDoc(leagueRef, { ...EMPTY_LEAGUE, updatedAt: serverTimestamp() }),
     setDoc(settingsRef, { ...DEFAULT_SETTINGS, updatedAt: serverTimestamp() }),
   ]);
 }

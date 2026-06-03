@@ -245,27 +245,63 @@ a, button, [role="button"] {
 .empty-state h3 { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; color: var(--color-text); margin-bottom: var(--space-2); }
 .empty-state p { max-width: 40ch; font-size: var(--text-sm); margin-bottom: var(--space-6); }
 
-/* ---------- Bracket ---------- */
-.bracket-tree { display: flex; align-items: flex-start; gap: 26px; overflow-x: auto; padding: var(--space-4) 0 var(--space-8); }
-.b-round { display: flex; flex-direction: column; flex-shrink: 0; }
-.b-round-head { font-family: var(--font-display); font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); text-align: center; padding: var(--space-2) var(--space-6); border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-4); }
-.b-round-matches { display: flex; flex-direction: column; }
-.b-match-wrap { position: relative; width: 200px; }
-.b-match { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; width: 200px; }
-.bracket-tree .b-match { height: 100%; display: flex; flex-direction: column; }
-.bracket-tree .b-team { flex: 1; padding: 4px var(--space-3); line-height: 1.2; }
-.b-match.clickable { cursor: pointer; }
-.b-match.clickable:hover { border-color: var(--color-primary); box-shadow: 0 0 0 1px oklch(from var(--color-primary) l c h / 0.5); }
-.b-team { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); font-size: var(--text-sm); }
-.b-team:not(:last-child) { border-bottom: 1px solid var(--color-divider); }
-.b-team.winner { background: var(--color-success-highlight); color: var(--color-success); font-weight: 700; }
-.b-team.loser { opacity: 0.45; }
-.b-team-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
-.b-score { font-family: var(--font-display); font-weight: 700; font-size: var(--text-sm); min-width: 18px; text-align: right; }
-/* Conectores entre as fases (posições calculadas no render.js) */
-.b-line { position: absolute; background: var(--color-border); }
-.b-line-h { height: 2px; transform: translateY(-1px); }
-.b-line-v { width: 2px; transform: translateX(-1px); }
+/* ---------- Bloco de seção ---------- */
+.block-title { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; letter-spacing: 0.02em; margin-bottom: var(--space-4); }
+
+/* ---------- Avatar mini ---------- */
+.avatar-mini { width: 24px; height: 24px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+
+/* ---------- Classificação ---------- */
+.standings-wrap { overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+.standings { width: 100%; border-collapse: collapse; font-size: var(--text-sm); min-width: 520px; }
+.standings th, .standings td { padding: var(--space-3); text-align: center; }
+.standings thead th { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); font-weight: 700; border-bottom: 1px solid var(--color-border); }
+.standings th.st-team-h, .standings td.st-team { text-align: left; }
+.standings tbody tr { border-bottom: 1px solid var(--color-divider); }
+.standings tbody tr:last-child { border-bottom: none; }
+.standings tr.qualified { background: var(--color-success-highlight); }
+.standings tr.qualified .st-pos { color: var(--color-success); }
+.st-pos { font-family: var(--font-display); font-weight: 700; color: var(--color-text-muted); width: 36px; }
+.st-team { display: flex; align-items: center; gap: var(--space-2); }
+.st-name { font-weight: 600; white-space: nowrap; }
+.st-flag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-success); background: oklch(from var(--color-success) l c h / 0.15); padding: 1px 6px; border-radius: var(--radius-full); margin-left: var(--space-1); }
+.st-strong { font-weight: 700; }
+.st-muted { color: var(--color-text-muted); }
+.st-pts { font-family: var(--font-display); font-weight: 700; font-size: var(--text-base); color: var(--color-primary); }
+
+/* ---------- Jogos ---------- */
+.round-group { margin-bottom: var(--space-5); }
+.round-label { font-family: var(--font-display); font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); margin-bottom: var(--space-2); }
+.match-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-2); }
+.match-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.match-row.clickable { cursor: pointer; }
+.match-row.clickable:hover { border-color: var(--color-primary); }
+.match-row.played { background: var(--color-surface-2); }
+.match-team { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.match-team.left { justify-content: flex-end; }
+.match-team.right { justify-content: flex-start; }
+.match-team .mt-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: var(--text-sm); }
+.match-team.win { color: var(--color-success); }
+.match-team.win .mt-name { font-weight: 700; }
+.match-team.lose { opacity: 0.55; }
+.match-score { font-family: var(--font-display); font-weight: 700; display: flex; align-items: center; gap: 4px; }
+.match-score i { color: var(--color-text-faint); font-style: normal; font-size: 0.8em; }
+.match-score b { min-width: 14px; text-align: center; }
+
+/* ---------- Final ---------- */
+.final-block { margin: var(--space-8) 0; }
+.final-head { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
+.final-match { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-4); padding: var(--space-5); background: linear-gradient(135deg, oklch(from var(--color-gold) l c h / 0.12), oklch(from var(--color-primary) l c h / 0.06)); border: 1px solid var(--color-gold); border-radius: var(--radius-xl); }
+.final-match.clickable { cursor: pointer; }
+.final-match.clickable:hover { box-shadow: var(--shadow-md); }
+.final-team { display: flex; align-items: center; gap: var(--space-3); font-family: var(--font-display); font-weight: 700; font-size: var(--text-base); min-width: 0; }
+.final-team > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.final-team.right { justify-content: flex-end; }
+.final-team.win { color: var(--color-gold); }
+.final-team.lose { opacity: 0.5; }
+.final-score { font-family: var(--font-display); font-weight: 700; font-size: var(--text-xl); display: flex; align-items: center; gap: var(--space-2); }
+.final-score i { color: var(--color-text-faint); font-style: normal; font-size: 0.7em; }
+.final-waiting { padding: var(--space-6); text-align: center; color: var(--color-text-muted); border: 1px dashed var(--color-border); border-radius: var(--radius-xl); font-size: var(--text-sm); }
 
 /* ---------- Champion ---------- */
 .champion-banner { background: linear-gradient(135deg, oklch(from var(--color-gold) l c h / 0.15), oklch(from var(--color-primary) l c h / 0.1)); border: 1px solid var(--color-gold); border-radius: var(--radius-xl); padding: var(--space-8); text-align: center; margin-bottom: var(--space-8); }
@@ -294,6 +330,11 @@ a, button, [role="button"] {
 .player-num { width: 26px; height: 26px; border-radius: var(--radius-full); background: var(--color-surface-offset); border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: var(--text-xs); font-weight: 700; color: var(--color-text-muted); flex-shrink: 0; }
 .player-row .form-input { flex: 1; }
 .player-chip { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); background: var(--color-surface-2); border-radius: var(--radius-md); font-size: var(--text-sm); }
+.stat-edit-row { display: grid; grid-template-columns: 1fr 52px 52px 52px; gap: var(--space-2); margin-bottom: 6px; }
+.stat-edit-head { font-size: var(--text-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+.stat-edit-head span { text-align: center; }
+.stat-edit-head span:first-child { text-align: left; }
+.stat-num { padding: var(--space-2) 4px; text-align: center; }
 
 /* ---------- Payment ---------- */
 .payment-grid { display: grid; grid-template-columns: 1fr; gap: var(--space-6); align-items: start; }
@@ -368,16 +409,7 @@ a, button, [role="button"] {
 .countdown-value b { color: var(--color-primary); }
 .countdown-value small { color: var(--color-text-muted); font-size: 0.7em; font-weight: 500; }
 
-/* ---------- Controle segmentado (modo de sorteio) ---------- */
-.seg-control { display: inline-flex; padding: 3px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); gap: 2px; }
-.seg-btn { padding: var(--space-2) var(--space-4); border-radius: calc(var(--radius-md) - 2px); font-size: var(--text-sm); font-weight: 600; color: var(--color-text-muted); }
-.seg-btn.active { background: var(--color-primary); color: #fff; }
-
-/* ---------- Seed manual ---------- */
-.seed-row { display: flex; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-2) var(--space-3); background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: var(--space-2); }
-.seed-num { width: 24px; height: 24px; border-radius: var(--radius-full); background: var(--color-primary-highlight); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: var(--text-xs); font-weight: 700; flex-shrink: 0; }
-.seed-name { flex: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.seed-actions { display: flex; gap: var(--space-1); }
+/* ---------- Preview do sorteio ---------- */
 #draw-teams-preview { max-height: 320px; overflow-y: auto; }
 
 /* ---------- Responsivo ---------- */

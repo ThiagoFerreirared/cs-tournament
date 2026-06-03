@@ -32,7 +32,11 @@ export const tournament = {
 
   // Logística
   dates: "15, 16 e 17 de maio",
-  format: "100% online · Eliminatória simples",
+  format: "100% online · Todos contra todos (MD3) + Final (MD5)",
+  // Formato dos jogos: fase de pontos em melhor-de-3, final em melhor-de-5.
+  bestOf: { round: 3, final: 5 },
+  // Pontuação da classificação
+  pointsPerWin: 3,
   // Data/hora de início (ISO) para a contagem regressiva. Deixe null para
   // ocultar o contador. Ex.: "2026-05-15T20:00:00-03:00".
   startDate: null,
@@ -44,11 +48,10 @@ export const tournament = {
 
   // Financeiro
   // A premiação é um "bolão": soma das inscrições (nº de times × a taxa).
-  // Dividida entre os colocados conforme prizeSplit. Ex.: 4 times = R$ 1000
-  // → 1º R$ 750, 2º R$ 250. Para mudar a divisão, edite prizeSplit (a soma
-  // das frações deve dar 1). Para premiar só o campeão, use [1].
+  // prizeSplit define a divisão entre os colocados. [1] = vencedor leva tudo.
+  // Ex.: 4 times = R$ 1000 → campeão leva R$ 1000.
   registrationFee: 250,
-  prizeSplit: [0.75, 0.25],
+  prizeSplit: [1],
 
   // Pagamento
   pix: {

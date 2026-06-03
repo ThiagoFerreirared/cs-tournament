@@ -30,7 +30,7 @@
         <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard">Dashboard</button>
         <button class="nav-btn" onclick="showPage('register')" id="nav-register">Inscrição</button>
         <button class="nav-btn" onclick="showPage('teams')" id="nav-teams">Times</button>
-        <button class="nav-btn" onclick="showPage('bracket')" id="nav-bracket">Chave</button>
+        <button class="nav-btn" onclick="showPage('bracket')" id="nav-bracket">Tabela</button>
       </nav>
       <div class="topbar-actions">
         <button class="btn btn-ghost btn-sm" onclick="requestNotifications()">🔔 Notificações</button>
@@ -61,16 +61,16 @@
         <div class="card card-accent" style="margin-bottom:var(--space-6)">
           <div class="card-header"><span class="card-title">Premiação (bolão)</span><span class="badge badge-primary" id="prize-pool-badge">R$ 0</span></div>
           <div class="stats-row" style="margin-bottom:0">
-            <div class="stat-card"><div class="stat-label">1º Lugar</div><div class="stat-value text-primary" id="prize-1st">—</div></div>
-            <div class="stat-card"><div class="stat-label">2º Lugar</div><div class="stat-value" id="prize-2nd">—</div></div>
+            <div class="stat-card"><div class="stat-label">🏆 Campeão leva tudo</div><div class="stat-value text-gold" id="prize-champion">—</div></div>
             <div class="stat-card"><div class="stat-label">Inscrição (PIX)</div><div class="stat-value" data-fill="fee"></div><div class="stat-sub">por time · vira prêmio</div></div>
+            <div class="stat-card"><div class="stat-label">Formato</div><div class="stat-value sm">Todos × todos</div><div class="stat-sub">MD3 + Final MD5</div></div>
           </div>
         </div>
 
         <div class="stats-row">
           <div class="stat-card"><div class="stat-label">Times Inscritos</div><div class="stat-value" id="stat-teams">0</div><div class="stat-sub">de <span data-fill="maxTeams"></span> máximo</div></div>
           <div class="stat-card"><div class="stat-label">Fase Atual</div><div class="stat-value sm" id="stat-phase">Inscrição</div></div>
-          <div class="stat-card"><div class="stat-label">Jogos</div><div class="stat-value" id="stat-matches">0</div><div class="stat-sub">na chave</div></div>
+          <div class="stat-card"><div class="stat-label">Jogos</div><div class="stat-value" id="stat-matches">0</div><div class="stat-sub">na tabela</div></div>
           <div class="stat-card"><div class="stat-label">Pagamentos</div><div class="stat-value" id="stat-paid">0</div><div class="stat-sub" id="stat-paid-sub">pendentes</div></div>
           <div class="stat-card"><div class="stat-label">Campeão</div><div class="stat-value sm" id="stat-champion">—</div></div>
         </div>
@@ -189,7 +189,7 @@
 
       <!-- ============ CHAVE ============ -->
       <section class="page" id="page-bracket">
-        <div class="page-header"><div><h1 class="page-title">Chave do Torneio</h1><p class="page-subtitle" id="bracket-subtitle">Realize o sorteio para gerar a chave</p></div></div>
+        <div class="page-header"><div><h1 class="page-title">Tabela & Classificação</h1><p class="page-subtitle" id="bracket-subtitle">Gere a tabela para começar</p></div></div>
         <div id="bracket-content"></div>
       </section>
     </main>
@@ -200,22 +200,18 @@
     <button class="mobile-nav-btn active" onclick="showPage('dashboard')" id="mnav-dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</button>
     <button class="mobile-nav-btn" onclick="showPage('register')" id="mnav-register"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>Inscrição</button>
     <button class="mobile-nav-btn" onclick="showPage('teams')" id="mnav-teams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Times</button>
-    <button class="mobile-nav-btn" onclick="showPage('bracket')" id="mnav-bracket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Chave</button>
+    <button class="mobile-nav-btn" onclick="showPage('bracket')" id="mnav-bracket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Tabela</button>
   </nav>
 
   <!-- ============ MODAIS ============ -->
   <div class="modal-overlay" id="draw-modal">
     <div class="modal">
-      <div class="modal-header"><h2 class="modal-title">🎰 Sorteio da Chave</h2><button class="modal-close" onclick="closeDrawModal()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-      <div class="seg-control">
-        <button class="seg-btn active" id="draw-mode-random" onclick="setDrawMode('random')">🎲 Aleatório</button>
-        <button class="seg-btn" id="draw-mode-manual" onclick="setDrawMode('manual')">✋ Manual</button>
-      </div>
-      <p class="text-muted" id="draw-hint" style="font-size:var(--text-sm);margin:var(--space-3) 0 var(--space-4)">Os times serão distribuídos aleatoriamente na chave.</p>
+      <div class="modal-header"><h2 class="modal-title">📋 Gerar Tabela de Jogos</h2><button class="modal-close" onclick="closeDrawModal()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <p class="text-muted" style="font-size:var(--text-sm);margin-bottom:var(--space-4)">Cada time enfrenta todos os outros uma vez (MD3). Os 2 melhores da classificação disputam a final (MD5). Isso encerra as inscrições. Confirma?</p>
       <div id="draw-teams-preview" class="row" style="margin-bottom:var(--space-4)"></div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeDrawModal()">Cancelar</button>
-        <button class="btn btn-primary" id="btn-confirm-draw" onclick="performDraw()">Sortear Agora</button>
+        <button class="btn btn-primary" id="btn-confirm-draw" onclick="performDraw()">Gerar Tabela</button>
       </div>
     </div>
   </div>
@@ -226,9 +222,10 @@
       <div class="score-input-row">
         <div><div style="font-family:var(--font-display);font-weight:700;text-align:center;margin-bottom:var(--space-3)" id="score-team1-name">Time 1</div><input class="form-input score-number" type="number" min="0" max="99" id="score-team1" value="0" /></div>
         <div class="vs">VS</div>
-        <div><div style="font-family:var(--font-display);font-weight:700;text-align:center;margin-bottom:var(--space-3)" id="score-team2-name">Time 2</div><input class="form-input score-number" type="number" min="0" max="99" id="score-team2" value="0" /></div>
+        <div><div style="font-family:var(--font-display);font-weight:700;text-align:center;margin-bottom:var(--space-3)" id="score-team2-name">Time 2</div><input class="form-input score-number" type="number" min="0" max="9" id="score-team2" value="0" /></div>
       </div>
-      <div id="score-error" class="form-error hidden" style="margin-top:var(--space-3)"></div>
+      <div id="score-hint" class="form-hint" style="text-align:center;margin-top:var(--space-3)"></div>
+      <div id="score-error" class="form-error hidden" style="margin-top:var(--space-2)"></div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeScoreModal()">Cancelar</button>
         <button class="btn btn-primary" onclick="saveScore()">Salvar Resultado</button>

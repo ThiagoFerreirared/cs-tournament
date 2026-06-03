@@ -1,8 +1,8 @@
 # 🏆 Lumix Fibra CS2 — Plataforma de Torneio
 
 Site oficial do **1º Campeonato Lumix Fibra de Counter-Strike 2**: inscrição de
-times, sorteio de chave eliminatória, registro de resultados e acompanhamento
-ao vivo — tudo sincronizado em tempo real via Firebase.
+times, liga de pontos corridos (todos contra todos) com final, classificação e
+estatísticas dos jogadores — tudo ao vivo, sincronizado via Firebase.
 
 ![status](https://img.shields.io/badge/status-ativo-success) ![stack](https://img.shields.io/badge/stack-vanilla%20JS%20%2B%20Firebase-orange)
 
@@ -12,18 +12,23 @@ ao vivo — tudo sincronizado em tempo real via Firebase.
 
 - **Tela inicial de login** (`index.html`) que serve de portão: entrar no
   painel, inscrever um time ou acompanhar como visitante.
-- **Visão pública ao vivo** (`torneio.html`) — times inscritos, chave, fase e
-  campeão em tempo real, sem recarregar a página.
+- **Visão pública ao vivo** (`torneio.html`) — classificação, ranking de
+  jogadores, jogos, final e campeão em tempo real, sem recarregar a página.
+- **Formato:** todos contra todos em **MD3** (fase de pontos) e os **2 melhores**
+  disputam a **final em MD5**. O **vencedor leva toda a premiação**.
+- **Duas tabelas de ranking:** classificação dos times (J/V/D, saldo de mapas,
+  pontos) e ranking de jogadores (**kills, mortes, assistências, K/D**).
 - **Premiação em bolão** — o prêmio é a soma das inscrições (nº de times × a
-  taxa) e atualiza ao vivo. Ex.: 4 times = R$ 1000 (1º R$ 750, 2º R$ 250).
+  taxa) e atualiza ao vivo. Ex.: 4 times = R$ 1000 para o campeão.
 - **Inscrição de times** — formulário público com chave PIX, QR Code, validação
   (nome único, mínimo de jogadores) e bloqueio quando as inscrições encerram.
 - **Painel administrativo protegido** (login por e-mail/senha):
-  - Encerrar / reabrir inscrições
-  - Sorteio da chave **aleatório ou manual** (eliminatória simples, com _byes_)
-  - Registro de placares com propagação automática dos vencedores
+  - Encerrar / reabrir inscrições e **gerar a tabela** de jogos
+  - Registrar e **editar** placares (MD3/MD5) — a classificação e a final se
+    recalculam sozinhas
+  - **Editar as estatísticas** (K/M/A) de cada jogador
   - **Resumo financeiro** (arrecadado × pendente) e **export CSV** dos times
-  - Confirmar pagamento, **editar** e remover times
+  - Confirmar pagamento, editar e remover times
   - Notificações no navegador a cada nova inscrição
 - **Ícones e metadados de instalação** (web manifest com ícones e tema).
 - **Compartilhamento rico** (imagem Open Graph) e **Google Analytics** opcional.
@@ -122,9 +127,11 @@ atributos `data-fill`.
 
 Outros ajustes:
 
-- **Premiação (bolão):** o prêmio é `nº de times × registrationFee`. A divisão
-  entre os colocados é o `prizeSplit` (ex.: `[0.75, 0.25]` = 1º 75%, 2º 25%).
-  Para premiar só o campeão, use `[1]`.
+- **Premiação (bolão):** o prêmio é `nº de times × registrationFee`. O
+  `prizeSplit` define a divisão: `[1]` = vencedor leva tudo (atual);
+  `[0.7, 0.3]` = 1º 70%, 2º 30%.
+- **Formato dos jogos:** `bestOf` no config — `{ round: 3, final: 5 }` (fase de
+  pontos em MD3, final em MD5). `pointsPerWin` controla os pontos por vitória.
 - **Contagem regressiva:** defina `startDate` (ISO) no config para exibir o
   contador na home; deixe `null` para ocultá-lo.
 - **Google Analytics:** já usa o `measurementId` do config (não roda em
