@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel — Lumix Fibra CS2</title>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#0d0e10" />
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300..700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <div class="app hidden" id="admin-shell">
+    <header class="topbar">
+      <a class="topbar-logo" href="index.html">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <polygon points="14,2 26,8 26,20 14,26 2,20 2,8" fill="none" stroke="currentColor" stroke-width="2"/>
+          <circle cx="14" cy="14" r="4" fill="currentColor"/>
+          <line x1="14" y1="6" x2="14" y2="10" stroke="currentColor" stroke-width="2"/>
+          <line x1="14" y1="18" x2="14" y2="22" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        <span data-fill="brand">Lumix Fibra CS2</span>
+      </a>
+      <nav class="topbar-nav" aria-label="Navegação principal">
+        <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard">Dashboard</button>
+        <button class="nav-btn" onclick="showPage('register')" id="nav-register">Inscrição</button>
+        <button class="nav-btn" onclick="showPage('teams')" id="nav-teams">Times</button>
+        <button class="nav-btn" onclick="showPage('bracket')" id="nav-bracket">Chave</button>
+      </nav>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="requestNotifications()">🔔 Notificações</button>
+        <button class="icon-btn" data-theme-toggle aria-label="Alternar tema"></button>
+        <button class="btn btn-secondary btn-sm" onclick="logout()">Sair</button>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- ============ DASHBOARD ============ -->
+      <section class="page active" id="page-dashboard">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title" data-fill="fullName">1º Campeonato Lumix Fibra CS2</h1>
+            <p class="page-subtitle"><span data-fill="dates"></span> · <span data-fill="format"></span></p>
+          </div>
+          <button class="btn btn-secondary" onclick="showPage('register')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            Inscrever Time
+          </button>
+        </div>
+
+        <div id="dashboard-status-banner" class="status-banner open">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span id="dashboard-status-text">Inscrições abertas — aguardando times</span>
+        </div>
+
+        <div class="card card-accent" style="margin-bottom:var(--space-6)">
+          <div class="card-header"><span class="card-title">Premiação</span><span class="badge badge-primary" data-fill="prizePool"></span></div>
+          <div class="stats-row" style="margin-bottom:0">
+            <div class="stat-card"><div class="stat-label">1º Lugar</div><div class="stat-value text-primary" data-fill="prize1"></div></div>
+            <div class="stat-card"><div class="stat-label">2º Lugar</div><div class="stat-value" data-fill="prize2"></div></div>
+            <div class="stat-card"><div class="stat-label">3º Lugar</div><div class="stat-value" data-fill="prize3"></div></div>
+            <div class="stat-card"><div class="stat-label">Inscrição (PIX)</div><div class="stat-value text-primary" data-fill="fee"></div></div>
+          </div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-label">Times Inscritos</div><div class="stat-value" id="stat-teams">0</div><div class="stat-sub">de <span data-fill="maxTeams"></span> máximo</div></div>
+          <div class="stat-card"><div class="stat-label">Fase Atual</div><div class="stat-value sm" id="stat-phase">Inscrição</div></div>
+          <div class="stat-card"><div class="stat-label">Jogos</div><div class="stat-value" id="stat-matches">0</div><div class="stat-sub">na chave</div></div>
+          <div class="stat-card"><div class="stat-label">Pagamentos</div><div class="stat-value" id="stat-paid">0</div><div class="stat-sub" id="stat-paid-sub">pendentes</div></div>
+          <div class="stat-card"><div class="stat-label">Campeão</div><div class="stat-value sm" id="stat-champion">—</div></div>
+        </div>
+
+        <div class="card" style="margin-bottom:var(--space-6)">
+          <div class="card-header"><span class="card-title">⚙️ Administração</span></div>
+          <div class="row">
+            <button class="btn btn-primary" id="btn-close-reg" onclick="closeRegistration()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Encerrar Inscrições
+            </button>
+            <button class="btn btn-secondary hidden" id="btn-reopen" onclick="reopenRegistration()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+              Reabrir Inscrições
+            </button>
+            <button class="btn btn-primary" id="btn-draw" onclick="openDrawModal()" disabled>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Realizar Sorteio
+            </button>
+            <button class="btn btn-ghost btn-sm ml-auto" onclick="resetTournament()" style="color:var(--color-error)">Resetar Torneio</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">Times Recentes</span><button class="btn btn-ghost btn-sm" onclick="showPage('teams')">Ver todos →</button></div>
+          <div id="dashboard-teams-list"></div>
+        </div>
+      </section>
+
+      <!-- ============ INSCRIÇÃO ============ -->
+      <section class="page" id="page-register">
+        <div class="page-header"><div><h1 class="page-title">Inscrição de Time</h1><p class="page-subtitle">Cadastro manual com pagamento via PIX</p></div></div>
+
+        <div id="reg-status-banner" class="status-banner open">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="9 11 12 14 22 4"/></svg>
+          <span>Inscrições abertas — cadastre seu time agora</span>
+        </div>
+
+        <div style="max-width:1000px">
+          <div class="card" style="margin-bottom:var(--space-6)">
+            <div class="card-header"><span class="card-title">Pagamento da Inscrição</span><span class="badge badge-warning" data-fill="fee"></span></div>
+            <div class="payment-grid">
+              <div class="qr-wrap"><img id="pix-qr" alt="QR Code PIX" loading="lazy" /></div>
+              <div>
+                <div style="font-family:var(--font-display);font-size:var(--text-lg);font-weight:700;margin-bottom:var(--space-3)">PIX para inscrição</div>
+                <div class="text-muted" style="font-size:var(--text-sm);margin-bottom:var(--space-3)">Valor: <strong class="text-primary" data-fill="fee"></strong> · Favorecido: <span data-fill="pixHolder"></span></div>
+                <div class="form-group">
+                  <label class="form-label" for="pix-key">Chave PIX</label>
+                  <div class="input-with-action">
+                    <input class="form-input" id="pix-key" data-fill="pixKey" readonly />
+                    <button class="btn btn-secondary" type="button" onclick="copyPixKey()">Copiar</button>
+                  </div>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label" for="payment-note">Comprovante / observação</label>
+                  <input class="form-input" type="text" id="payment-note" placeholder="ex: pago por João às 17:30" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title" style="margin-bottom:var(--space-6)">Dados do Time</h2>
+            <div class="form-group"><label class="form-label" for="team-name">Nome do Time *</label><input class="form-input" type="text" id="team-name" placeholder="ex: Furia, MIBR..." maxlength="32" /></div>
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom:0"><label class="form-label" for="team-tag">TAG</label><input class="form-input" type="text" id="team-tag" placeholder="ex: FUR" maxlength="5" style="text-transform:uppercase" /></div>
+              <div class="form-group" style="margin-bottom:0"><label class="form-label" for="team-contact">Contato (capitão)</label><input class="form-input" type="text" id="team-contact" placeholder="@nick ou telefone" /></div>
+            </div>
+            <div class="form-group" style="margin-top:var(--space-4);margin-bottom:0"><label class="form-label" for="team-email">Email do Capitão</label><input class="form-input" type="email" id="team-email" placeholder="contato@time.com" /></div>
+
+            <div class="separator"></div>
+            <h3 style="font-family:var(--font-display);font-size:var(--text-base);font-weight:700;margin-bottom:var(--space-4)">Jogadores (mínimo <span data-fill="minPlayers"></span>)</h3>
+            <div id="players-list">
+              <div class="player-row"><span class="player-num">1</span><input class="form-input" type="text" placeholder="Nick do jogador 1 *" id="player-1" /></div>
+              <div class="player-row"><span class="player-num">2</span><input class="form-input" type="text" placeholder="Nick do jogador 2 *" id="player-2" /></div>
+              <div class="player-row"><span class="player-num">3</span><input class="form-input" type="text" placeholder="Nick do jogador 3 *" id="player-3" /></div>
+              <div class="player-row"><span class="player-num">4</span><input class="form-input" type="text" placeholder="Nick do jogador 4 *" id="player-4" /></div>
+              <div class="player-row"><span class="player-num">5</span><input class="form-input" type="text" placeholder="Nick do jogador 5 *" id="player-5" /></div>
+              <div class="player-row"><span class="player-num">6</span><input class="form-input" type="text" placeholder="Nick do jogador 6 (reserva)" id="player-6" /></div>
+            </div>
+            <div id="reg-error" class="form-error hidden" style="margin-top:var(--space-3)"></div>
+            <div class="row" style="margin-top:var(--space-6)">
+              <button class="btn btn-primary btn-lg" id="btn-register" onclick="registerTeam()">Confirmar Inscrição</button>
+              <button class="btn btn-secondary btn-lg" onclick="clearRegForm()">Limpar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ TIMES ============ -->
+      <section class="page" id="page-teams">
+        <div class="page-header">
+          <div><h1 class="page-title">Times Inscritos</h1><p class="page-subtitle" id="teams-count-label">0 times cadastrados</p></div>
+          <button class="btn btn-primary" onclick="showPage('register')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Novo Time
+          </button>
+        </div>
+        <div id="teams-grid" class="teams-grid"></div>
+      </section>
+
+      <!-- ============ CHAVE ============ -->
+      <section class="page" id="page-bracket">
+        <div class="page-header"><div><h1 class="page-title">Chave do Torneio</h1><p class="page-subtitle" id="bracket-subtitle">Realize o sorteio para gerar a chave</p></div></div>
+        <div id="bracket-content"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============ NAV MOBILE ============ -->
+  <nav class="mobile-nav" aria-label="Navegação mobile">
+    <button class="mobile-nav-btn active" onclick="showPage('dashboard')" id="mnav-dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</button>
+    <button class="mobile-nav-btn" onclick="showPage('register')" id="mnav-register"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>Inscrição</button>
+    <button class="mobile-nav-btn" onclick="showPage('teams')" id="mnav-teams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Times</button>
+    <button class="mobile-nav-btn" onclick="showPage('bracket')" id="mnav-bracket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Chave</button>
+  </nav>
+
+  <!-- ============ MODAIS ============ -->
+  <div class="modal-overlay" id="draw-modal">
+    <div class="modal">
+      <div class="modal-header"><h2 class="modal-title">🎰 Sorteio da Chave</h2><button class="modal-close" onclick="closeDrawModal()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <p class="text-muted" style="font-size:var(--text-sm);margin-bottom:var(--space-4)">O sorteio distribui os times aleatoriamente na chave eliminatória e encerra as inscrições. Confirma?</p>
+      <div id="draw-teams-preview" class="row" style="margin-bottom:var(--space-4)"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeDrawModal()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-confirm-draw" onclick="performDraw()">Sortear Agora</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="score-modal">
+    <div class="modal">
+      <div class="modal-header"><h2 class="modal-title">Registrar Resultado</h2><button class="modal-close" onclick="closeScoreModal()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div class="score-input-row">
+        <div><div style="font-family:var(--font-display);font-weight:700;text-align:center;margin-bottom:var(--space-3)" id="score-team1-name">Time 1</div><input class="form-input score-number" type="number" min="0" max="99" id="score-team1" value="0" /></div>
+        <div class="vs">VS</div>
+        <div><div style="font-family:var(--font-display);font-weight:700;text-align:center;margin-bottom:var(--space-3)" id="score-team2-name">Time 2</div><input class="form-input score-number" type="number" min="0" max="99" id="score-team2" value="0" /></div>
+      </div>
+      <div id="score-error" class="form-error hidden" style="margin-top:var(--space-3)"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeScoreModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveScore()">Salvar Resultado</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="team-modal">
+    <div class="modal">
+      <div class="modal-header"><h2 class="modal-title" id="team-modal-title">Detalhes do Time</h2><button class="modal-close" onclick="closeTeamModal()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div id="team-modal-content"></div>
+      <div class="modal-footer">
+        <button class="btn btn-success btn-sm" id="team-modal-pay" onclick="confirmPaymentFromModal()">💰 Confirmar pagamento</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTeamFromModal()">Remover Time</button>
+        <button class="btn btn-secondary" onclick="closeTeamModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="assets/js/page-admin.js"></script>
+</body>
+</html>

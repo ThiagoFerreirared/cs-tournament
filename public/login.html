@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — Painel Lumix Fibra CS2</title>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#0d0e10" />
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@300..700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <main class="auth-screen">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="auth-logo-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <polygon points="14,2 26,8 26,20 14,26 2,20 2,8" fill="none" stroke="currentColor" stroke-width="2"/>
+            <circle cx="14" cy="14" r="4" fill="currentColor"/>
+            <line x1="14" y1="6" x2="14" y2="10" stroke="currentColor" stroke-width="2"/>
+            <line x1="14" y1="18" x2="14" y2="22" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </div>
+        <div>
+          <h1 data-fill="brand">Lumix Fibra CS2</h1>
+          <p>Painel de Administração</p>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="login-user">Usuário</label>
+        <input class="form-input" id="login-user" type="text" placeholder="usuário ou e-mail" autocomplete="username" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="login-pass">Senha</label>
+        <input class="form-input" id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <div id="login-error" class="form-error hidden" style="text-align:center;margin-bottom:var(--space-3)"></div>
+
+      <button class="btn btn-primary btn-lg btn-block" id="btn-login" onclick="doLogin()">Entrar</button>
+
+      <div class="separator"></div>
+
+      <a href="inscricao.html" class="btn btn-outline btn-block">📝 Inscrever meu time</a>
+      <div style="text-align:center;margin-top:var(--space-4);font-size:var(--text-sm)">
+        <a href="index.html" class="text-primary" style="text-decoration:none;font-weight:600">👁 Acompanhar como visitante</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" style="border:none">
+    Desenvolvido por <span data-fill="author"></span>
+  </footer>
+
+  <script type="module" src="assets/js/page-login.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "cs-tournament",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Plataforma do 1º Campeonato Lumix Fibra de Counter-Strike 2 — inscrição, chave e acompanhamento ao vivo.",
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes serve public -l 5173",
+    "deploy": "firebase deploy",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "emulators": "firebase emulators:start"
+  },
+  "keywords": ["counter-strike", "cs2", "torneio", "firebase", "esports"],
+  "author": "Thiago Ferreira",
+  "license": "MIT"
+}

@@ -1,0 +1,42 @@
+rules_version = '2';
+
+// Regras de segurança do Firestore — Lumix Fibra CS2
+//
+// Princípio: leitura pública (a página ao vivo precisa exibir tudo), mas
+// escritas administrativas só com autenticação. A inscrição pública é
+// permitida com validação básica e apenas enquanto as inscrições estiverem
+// abertas.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function registrationOpen() {
+      let main = /databases/$(database)/documents/tournament/main;
+      // Se o doc ainda não existe, considera aberto (estado inicial).
+      return !exists(main) || get(main).data.registrationOpen == true;
+    }
+
+    function validNewTeam() {
+      let d = request.resource.data;
+      return d.name is string && d.name.size() > 0 && d.name.size() <= 40
+        && d.players is list && d.players.size() >= 5
+        && d.paymentStatus == 'pendente';
+    }
+
+    // Times: qualquer um lê e se inscreve; só admin altera/remove.
+    match /teams/{teamId} {
+      allow read: if true;
+      allow create: if validNewTeam() && registrationOpen();
+      allow update, delete: if signedIn();
+    }
+
+    // Estado do torneio e chave: leitura pública, escrita só admin.
+    match /tournament/{docId} {
+      allow read: if true;
+      allow write: if signedIn();
+    }
+  }
+}
