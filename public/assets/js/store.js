@@ -37,10 +37,9 @@ const DEFAULT_SETTINGS = {
   registrationOpen: true,
   phase: "Inscrição",
   champion: null,
-  third: null,
 };
 
-const EMPTY_BRACKET = { rounds: [], thirdPlace: null };
+const EMPTY_BRACKET = { rounds: [] };
 
 /* ------------------------------------------------------------------ *
  * Inicialização
@@ -78,7 +77,7 @@ export function watchTeams(callback) {
 export function watchBracket(callback) {
   return onSnapshot(bracketRef, (snap) => {
     const data = snap.exists() ? snap.data() : EMPTY_BRACKET;
-    callback({ rounds: data.rounds || [], thirdPlace: data.thirdPlace || null });
+    callback({ rounds: data.rounds || [] });
   });
 }
 
@@ -154,7 +153,6 @@ export async function reopenRegistration() {
       registrationOpen: true,
       phase: "Inscrição",
       champion: null,
-      third: null,
       updatedAt: serverTimestamp(),
     }),
   ]);
@@ -164,29 +162,25 @@ export async function reopenRegistration() {
  * Chave
  * ------------------------------------------------------------------ */
 export async function drawBracket(teams, { random = true } = {}) {
-  const { rounds, thirdPlace } = createBracket(teams, { random });
-  await setDoc(bracketRef, { rounds, thirdPlace, updatedAt: serverTimestamp() });
+  const rounds = createBracket(teams, { random });
+  await setDoc(bracketRef, { rounds, updatedAt: serverTimestamp() });
   await updateDoc(settingsRef, {
     registrationOpen: false,
     phase: "Em andamento",
     champion: null,
-    third: null,
     updatedAt: serverTimestamp(),
   });
 }
 
 /**
  * Registra o resultado de uma partida: recalcula a chave inteira e atualiza
- * fase/campeão/3º lugar de forma atômica.
- * @param {{rounds, thirdPlace}} state  estado atual da chave
- * @param {number|"third"} roundIndex
+ * fase/campeão de forma atômica.
  */
-export async function reportResult(state, roundIndex, matchIndex, score1, score2) {
-  const r = applyResult(state, roundIndex, matchIndex, score1, score2);
-  await setDoc(bracketRef, { rounds: r.rounds, thirdPlace: r.thirdPlace, updatedAt: serverTimestamp() });
+export async function reportResult(rounds, roundIndex, matchIndex, score1, score2) {
+  const r = applyResult(rounds, roundIndex, matchIndex, score1, score2);
+  await setDoc(bracketRef, { rounds: r.rounds, updatedAt: serverTimestamp() });
   await updateDoc(settingsRef, {
     champion: r.champion || null,
-    third: r.third || null,
     phase: r.champion ? "Finalizado" : "Em andamento",
     updatedAt: serverTimestamp(),
   });

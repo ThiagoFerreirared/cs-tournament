@@ -2,7 +2,7 @@
  * Utilitários de interface compartilhados por todas as páginas:
  * formatação, tema claro/escuro persistente, toasts e helpers de segurança.
  */
-import { tournament, fullName, prizePool } from "./config.js";
+import { tournament, fullName } from "./config.js";
 
 /* ------------------------------------------------------------------ *
  * Segurança — escape de conteúdo do usuário
@@ -80,10 +80,6 @@ export function fillStaticContent() {
     minPlayers: tournament.minPlayers,
     fee: formatBRL(tournament.registrationFee),
     feeRaw: tournament.registrationFee,
-    prizePool: formatBRL(prizePool),
-    prize1: formatBRL(tournament.prizes[0]?.amount ?? 0),
-    prize2: formatBRL(tournament.prizes[1]?.amount ?? 0),
-    prize3: formatBRL(tournament.prizes[2]?.amount ?? 0),
     pixKey: tournament.pix.key,
     pixHolder: tournament.pix.holder,
     author: tournament.author,

@@ -43,12 +43,12 @@ export const tournament = {
   maxPlayers: 6, // 5 titulares + 1 reserva
 
   // Financeiro
+  // A premiação é um "bolão": soma das inscrições (nº de times × a taxa).
+  // Dividida entre os colocados conforme prizeSplit. Ex.: 4 times = R$ 1000
+  // → 1º R$ 750, 2º R$ 250. Para mudar a divisão, edite prizeSplit (a soma
+  // das frações deve dar 1). Para premiar só o campeão, use [1].
   registrationFee: 250,
-  prizes: [
-    { place: "1º Lugar", amount: 1500 },
-    { place: "2º Lugar", amount: 500 },
-    { place: "3º Lugar", amount: 300 },
-  ],
+  prizeSplit: [0.75, 0.25],
 
   // Pagamento
   pix: {
@@ -62,8 +62,23 @@ export const tournament = {
 /** Nome completo composto, ex.: "1º Campeonato Lumix Fibra CS2". */
 export const fullName = `${tournament.edition} ${tournament.brand}`;
 
-/** Soma da premiação (1500 + 500 + 300 = 2300). */
-export const prizePool = tournament.prizes.reduce((sum, p) => sum + p.amount, 0);
+/**
+ * Calcula a premiação a partir do número de times inscritos.
+ * @returns {{ pool:number, places:{label:string, amount:number}[] }}
+ */
+export function prizeBreakdown(teamCount) {
+  const pool = (teamCount || 0) * tournament.registrationFee;
+  const split = tournament.prizeSplit;
+  const places = [];
+  let allocated = 0;
+  split.forEach((frac, i) => {
+    const last = i === split.length - 1;
+    const amount = last ? pool - allocated : Math.round(pool * frac);
+    allocated += amount;
+    places.push({ label: `${i + 1}º Lugar`, amount });
+  });
+  return { pool, places };
+}
 
 /**
  * Atalhos de login do admin: o usuário digita "thiago" em vez do e-mail

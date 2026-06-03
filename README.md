@@ -10,15 +10,18 @@ ao vivo — tudo sincronizado em tempo real via Firebase.
 
 ## ✨ Funcionalidades
 
-- **Home pública ao vivo** — times inscritos, chave do torneio, fase atual e
-  campeão, atualizados em tempo real sem recarregar a página.
+- **Tela inicial de login** (`index.html`) que serve de portão: entrar no
+  painel, inscrever um time ou acompanhar como visitante.
+- **Visão pública ao vivo** (`torneio.html`) — times inscritos, chave, fase e
+  campeão em tempo real, sem recarregar a página.
+- **Premiação em bolão** — o prêmio é a soma das inscrições (nº de times × a
+  taxa) e atualiza ao vivo. Ex.: 4 times = R$ 1000 (1º R$ 750, 2º R$ 250).
 - **Inscrição de times** — formulário público com chave PIX, QR Code, validação
   (nome único, mínimo de jogadores) e bloqueio quando as inscrições encerram.
 - **Painel administrativo protegido** (login por e-mail/senha):
   - Encerrar / reabrir inscrições
   - Sorteio da chave **aleatório ou manual** (eliminatória simples, com _byes_)
   - Registro de placares com propagação automática dos vencedores
-  - **Disputa de 3º lugar** automática entre os perdedores das semifinais
   - **Resumo financeiro** (arrecadado × pendente) e **export CSV** dos times
   - Confirmar pagamento, **editar** e remover times
   - Notificações no navegador a cada nova inscrição
@@ -43,9 +46,9 @@ exigência é **servir os arquivos via HTTP** (não abrir com `file://`).
 ```
 cs-tournament/
 ├── public/                     # raiz do site (deploy)
-│   ├── index.html              # home pública (ao vivo)
+│   ├── index.html              # tela inicial: LOGIN + portão de entrada
+│   ├── torneio.html            # visão pública ao vivo
 │   ├── inscricao.html          # inscrição de times
-│   ├── login.html              # login do admin
 │   ├── admin.html              # painel administrativo (protegido)
 │   ├── 404.html
 │   ├── manifest.webmanifest    # PWA
@@ -58,14 +61,13 @@ cs-tournament/
 │           ├── firebase.js     # inicialização do Firebase
 │           ├── auth.js         # login / logout / proteção de rota
 │           ├── store.js        # camada de dados (Firestore)
-│           ├── bracket.js      # lógica pura da chave (+ 3º lugar)
+│           ├── bracket.js      # lógica pura da chave (eliminatória simples)
 │           ├── render.js       # HTML compartilhado (chave, conectores)
 │           ├── ui.js           # tema, toasts, formatação, CSV, escape XSS
 │           ├── analytics.js    # Google Analytics (gtag)
 │           └── page-*.js       # script de cada página
-├── functions/                  # Cloud Function de e-mail (opcional)
 ├── vercel.json                 # hospedagem (serve a pasta public/)
-├── firebase.json               # config do Firestore + Functions
+├── firebase.json               # config do Firestore (regras/índices)
 ├── firestore.rules             # regras de segurança
 ├── firestore.indexes.json
 ├── .firebaserc                 # projeto Firebase (torneio-cs)
@@ -110,25 +112,6 @@ npm run deploy:rules            # publica firestore.rules
 ```
 
 O projeto já aponta para `torneio-cs` em [`.firebaserc`](.firebaserc).
-
-## 📧 E-mail de confirmação (opcional, Cloud Functions)
-
-Há uma função em [`functions/`](functions/index.js) que envia um e-mail de
-confirmação quando um time se inscreve. É **opcional** e exige:
-
-1. **Plano Blaze** no Firebase (Cloud Functions requer).
-2. Configurar os segredos de SMTP (Gmail com senha de app, Brevo, Mailgun…):
-   ```bash
-   firebase functions:secrets:set SMTP_HOST
-   firebase functions:secrets:set SMTP_USER
-   firebase functions:secrets:set SMTP_PASS
-   ```
-3. Instalar e publicar:
-   ```bash
-   cd functions && npm install && npm run deploy
-   ```
-
-Sem isso, o site funciona normalmente — apenas não envia e-mails.
 
 ## 🔐 Configuração do Firebase
 
@@ -184,6 +167,9 @@ atributos `data-fill`.
 
 Outros ajustes:
 
+- **Premiação (bolão):** o prêmio é `nº de times × registrationFee`. A divisão
+  entre os colocados é o `prizeSplit` (ex.: `[0.75, 0.25]` = 1º 75%, 2º 25%).
+  Para premiar só o campeão, use `[1]`.
 - **Contagem regressiva:** defina `startDate` (ISO) no config para exibir o
   contador na home; deixe `null` para ocultá-lo.
 - **Google Analytics:** já usa o `measurementId` do config (não roda em

@@ -2,7 +2,7 @@
  * Painel administrativo — gestão completa do torneio.
  * Fonte da verdade: Firestore (sincronização em tempo real).
  */
-import { tournament } from "./config.js";
+import { tournament, prizeBreakdown } from "./config.js";
 import { requireAuth, logout } from "./auth.js";
 import {
   ensureDocs, watchTeams, watchSettings, watchBracket,
@@ -10,7 +10,7 @@ import {
   setRegistrationOpen, reopenRegistration, drawBracket, reportResult,
   resetTournament,
 } from "./store.js";
-import { bracketTreeHTML, thirdPlaceHTML, teamAvatarHTML, teamsSkeleton } from "./render.js";
+import { bracketTreeHTML, teamAvatarHTML, teamsSkeleton } from "./render.js";
 import {
   initTheme, fillStaticContent, toast, escapeHtml, getInitials,
   formatDateTime, formatBRL, pixQrUrl, downloadCSV,
@@ -21,8 +21,8 @@ const $ = (id) => document.getElementById(id);
 
 /* ---- Estado (espelho do Firestore) ---- */
 let teams = [];
-let settings = { registrationOpen: true, phase: "Inscrição", champion: null, third: null };
-let bracket = { rounds: [], thirdPlace: null };
+let settings = { registrationOpen: true, phase: "Inscrição", champion: null };
+let bracket = { rounds: [] };
 let selectedTeamId = null;
 let teamsInitialized = false;
 let knownTeamIds = new Set();
@@ -98,6 +98,12 @@ function renderDashboard() {
   $("fin-arrecadado").textContent = formatBRL(paid * fee);
   $("fin-pendente").textContent = formatBRL(pending * fee);
   $("fin-potencial").textContent = formatBRL(teams.length * fee);
+
+  // Premiação (bolão) = nº de times × taxa
+  const prize = prizeBreakdown(teams.length);
+  $("prize-pool-badge").textContent = formatBRL(prize.pool);
+  $("prize-1st").textContent = formatBRL(prize.places[0]?.amount || 0);
+  $("prize-2nd").textContent = formatBRL(prize.places[1]?.amount || 0);
 
   // Banner
   const banner = $("dashboard-status-banner");
@@ -456,27 +462,24 @@ function renderBracketPage() {
 
   let html = "";
   if (settings.champion) {
-    html += `<div class="champion-banner"><div class="champion-crown">🏆</div><div class="champion-title">${escapeHtml(settings.champion.name)}</div><div class="champion-sub">Campeão do torneio${settings.third ? ` · 🥉 3º lugar: ${escapeHtml(settings.third.name)}` : ""}</div></div>`;
+    html += `<div class="champion-banner"><div class="champion-crown">🏆</div><div class="champion-title">${escapeHtml(settings.champion.name)}</div><div class="champion-sub">Campeão do torneio</div></div>`;
   }
   html += bracketTreeHTML(bracket.rounds, { interactive: true });
-  html += thirdPlaceHTML(bracket.thirdPlace, { interactive: true });
   content.innerHTML = html;
 
   content.querySelectorAll(".b-match.clickable").forEach((el) => {
-    el.addEventListener("click", () => {
-      if (el.dataset.third) openScoreModal("third");
-      else openScoreModal(Number(el.dataset.round), Number(el.dataset.match));
-    });
+    el.addEventListener("click", () =>
+      openScoreModal(Number(el.dataset.round), Number(el.dataset.match)));
   });
 }
 
 /* ---- Modal de placar ---- */
 let scoreRound = null, scoreMatch = null;
 function openScoreModal(ri, mi) {
-  const match = ri === "third" ? bracket.thirdPlace : bracket.rounds[ri]?.matches?.[mi];
+  const match = bracket.rounds[ri]?.matches?.[mi];
   if (!match || match.winnerId || !match.team1 || !match.team2) return;
   scoreRound = ri; scoreMatch = mi;
-  $("score-modal-title").textContent = ri === "third" ? "🥉 Resultado — 3º lugar" : "Registrar Resultado";
+  $("score-modal-title").textContent = "Registrar Resultado";
   $("score-team1-name").textContent = match.team1.name;
   $("score-team2-name").textContent = match.team2.name;
   $("score-team1").value = 0;
@@ -494,7 +497,7 @@ window.saveScore = async () => {
   if (Number.isNaN(s1) || Number.isNaN(s2)) return show("Insira um placar válido.");
   if (s1 === s2) return show("Não pode haver empate — defina o vencedor.");
   try {
-    await reportResult(bracket, scoreRound, scoreMatch, s1, s2);
+    await reportResult(bracket.rounds, scoreRound, scoreMatch, s1, s2);
     window.closeScoreModal();
     toast("✅ Resultado registrado!");
   } catch (e) {

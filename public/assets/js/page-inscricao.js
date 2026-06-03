@@ -1,12 +1,12 @@
 /**
  * Página pública de inscrição de times.
  */
-import { tournament } from "./config.js";
+import { tournament, prizeBreakdown } from "./config.js";
 import {
-  ensureDocs, watchSettings, isNameTaken, registerTeam,
+  ensureDocs, watchSettings, watchTeams, isNameTaken, registerTeam,
 } from "./store.js";
 import {
-  initTheme, fillStaticContent, toast, pixQrUrl, getInitials,
+  initTheme, fillStaticContent, toast, pixQrUrl, getInitials, formatBRL,
 } from "./ui.js";
 
 initTheme();
@@ -16,6 +16,13 @@ fillStaticContent();
 document.getElementById("pix-qr").src = pixQrUrl(
   tournament.pix.key, tournament.registrationFee, tournament.brand
 );
+
+// Premiação (bolão) ao vivo na hero
+watchTeams((teams) => {
+  const { pool } = prizeBreakdown(teams.length);
+  const el = document.getElementById("hero-prize");
+  if (el) el.textContent = formatBRL(pool);
+});
 
 let registrationOpen = true;
 

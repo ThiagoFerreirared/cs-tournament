@@ -28,7 +28,7 @@ export async function login(userInput, password) {
 }
 
 /** Encerra a sessão e redireciona. */
-export async function logout(redirect = "login.html") {
+export async function logout(redirect = "index.html") {
   await signOut(auth);
   location.href = redirect;
 }
@@ -37,7 +37,7 @@ export async function logout(redirect = "login.html") {
  * Protege uma página de admin: se não houver sessão, redireciona para o login.
  * Chama `onReady(user)` quando há um usuário autenticado.
  */
-export function requireAuth(onReady, redirect = "login.html") {
+export function requireAuth(onReady, redirect = "index.html") {
   onAuthStateChanged(auth, (user) => {
     if (user) onReady?.(user);
     else location.href = redirect;

@@ -1,16 +1,11 @@
 /**
  * Login do painel administrativo.
  */
-import { login, onAuthChange } from "./auth.js";
+import { login } from "./auth.js";
 import { initTheme, fillStaticContent } from "./ui.js";
 
 initTheme();
 fillStaticContent();
-
-// Já autenticado? vai direto para o painel.
-onAuthChange((user) => {
-  if (user) location.href = "admin.html";
-});
 
 const $ = (id) => document.getElementById(id);
 

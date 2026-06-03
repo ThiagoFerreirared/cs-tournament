@@ -17,7 +17,7 @@
 <body>
   <div class="app hidden" id="admin-shell">
     <header class="topbar">
-      <a class="topbar-logo" href="index.html">
+      <a class="topbar-logo" href="torneio.html">
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
           <polygon points="14,2 26,8 26,20 14,26 2,20 2,8" fill="none" stroke="currentColor" stroke-width="2"/>
           <circle cx="14" cy="14" r="4" fill="currentColor"/>
@@ -59,12 +59,11 @@
         </div>
 
         <div class="card card-accent" style="margin-bottom:var(--space-6)">
-          <div class="card-header"><span class="card-title">Premiação</span><span class="badge badge-primary" data-fill="prizePool"></span></div>
+          <div class="card-header"><span class="card-title">Premiação (bolão)</span><span class="badge badge-primary" id="prize-pool-badge">R$ 0</span></div>
           <div class="stats-row" style="margin-bottom:0">
-            <div class="stat-card"><div class="stat-label">1º Lugar</div><div class="stat-value text-primary" data-fill="prize1"></div></div>
-            <div class="stat-card"><div class="stat-label">2º Lugar</div><div class="stat-value" data-fill="prize2"></div></div>
-            <div class="stat-card"><div class="stat-label">3º Lugar</div><div class="stat-value" data-fill="prize3"></div></div>
-            <div class="stat-card"><div class="stat-label">Inscrição (PIX)</div><div class="stat-value text-primary" data-fill="fee"></div></div>
+            <div class="stat-card"><div class="stat-label">1º Lugar</div><div class="stat-value text-primary" id="prize-1st">—</div></div>
+            <div class="stat-card"><div class="stat-label">2º Lugar</div><div class="stat-value" id="prize-2nd">—</div></div>
+            <div class="stat-card"><div class="stat-label">Inscrição (PIX)</div><div class="stat-value" data-fill="fee"></div><div class="stat-sub">por time · vira prêmio</div></div>
           </div>
         </div>
 

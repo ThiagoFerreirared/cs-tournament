@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lumix Fibra CS2 — Acompanhe ao vivo</title>
+  <meta name="description" content="Acompanhe ao vivo o 1º Campeonato Lumix Fibra de Counter-Strike 2: times inscritos, chave do torneio e resultados em tempo real." />
+  <meta name="theme-color" content="#0d0e10" />
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg" />
+  <meta property="og:title" content="1º Campeonato Lumix Fibra CS2" />
+  <meta property="og:description" content="Acompanhe o torneio de CS2 ao vivo: times, chave e resultados." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="/assets/img/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300..700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="topbar-logo" href="torneio.html">
+      <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
+        <polygon points="14,2 26,8 26,20 14,26 2,20 2,8" fill="none" stroke="currentColor" stroke-width="2"/>
+        <circle cx="14" cy="14" r="4" fill="currentColor"/>
+        <line x1="14" y1="6" x2="14" y2="10" stroke="currentColor" stroke-width="2"/>
+        <line x1="14" y1="18" x2="14" y2="22" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      <span data-fill="brand">Lumix Fibra CS2</span>
+    </a>
+    <div class="topbar-actions">
+      <a href="inscricao.html" class="btn btn-primary btn-sm">📝 Inscrever time</a>
+      <div class="live-badge"><span class="live-dot"></span> AO VIVO</div>
+      <button class="icon-btn" data-theme-toggle aria-label="Alternar tema"></button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-tag">🏆 <span data-fill="edition">1º Campeonato</span></div>
+    <h1 data-fill="brand">Lumix Fibra CS2</h1>
+    <p class="hero-sub">
+      <span data-fill="dates"></span> &nbsp;•&nbsp; <span data-fill="format"></span>
+      &nbsp;•&nbsp; Inscrição <span data-fill="fee"></span> &nbsp;•&nbsp; Premiação <span id="hero-prize">—</span>
+    </p>
+    <div id="countdown" class="countdown hidden" data-countdown-wrap>
+      <span class="countdown-label">Começa em</span>
+      <span class="countdown-value" data-countdown></span>
+    </div>
+    <a href="inscricao.html" class="btn btn-primary btn-lg">📝 Inscrever meu time</a>
+  </section>
+
+  <main class="container" style="padding-top:var(--space-8);padding-bottom:var(--space-12)">
+    <!-- Campeão -->
+    <div id="champion-section" class="hidden" style="margin-bottom:var(--space-6)">
+      <div class="champion-banner">
+        <div class="champion-crown">🏆</div>
+        <div class="champion-title" id="champion-name">—</div>
+        <div class="champion-sub">Campeão do <span data-fill="fullName"></span></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <section class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Times Inscritos</div>
+        <div class="stat-value" id="stat-teams">0</div>
+        <div class="stat-sub">de <span data-fill="maxTeams"></span> vagas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Fase Atual</div>
+        <div class="stat-value sm" id="stat-phase" style="padding-top:.4rem">Inscrição</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Jogos</div>
+        <div class="stat-value" id="stat-matches">0</div>
+        <div class="stat-sub">na primeira fase</div>
+      </div>
+      <div class="stat-card featured">
+        <div class="stat-label">Premiação (bolão)</div>
+        <div class="stat-value text-gold" id="stat-prize">—</div>
+        <div class="stat-sub">
+          1º <span id="prize-1st">—</span> · 2º <span id="prize-2nd">—</span> · <span data-fill="fee"></span>/time
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA inscrição -->
+    <div class="cta-inner" id="cta-banner" style="margin-bottom:var(--space-8)">
+      <div>
+        <div class="cta-text">Vagas abertas — garanta a sua!</div>
+        <div class="cta-sub">Inscrição <span data-fill="fee"></span> via PIX · Mínimo <span data-fill="minPlayers"></span> jogadores</div>
+      </div>
+      <a href="inscricao.html" class="btn btn-primary btn-lg">📝 Inscrever agora</a>
+    </div>
+
+    <!-- Chave -->
+    <section style="margin-bottom:var(--space-12)">
+      <h2 class="section-title">⚔️ Chave do Torneio</h2>
+      <div id="bracket-public">
+        <div class="empty-state">
+          <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <p>A chave será gerada após o encerramento das inscrições.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Times -->
+    <section>
+      <h2 class="section-title">🎮 Times Inscritos</h2>
+      <div id="teams-grid" class="teams-grid">
+        <div class="empty-state" style="grid-column:1/-1"><p>Nenhum time inscrito ainda.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    Desenvolvido por <a href="index.html" title="Área administrativa"><span data-fill="author">Thiago Ferreira</span></a>
+    &nbsp;·&nbsp; <span data-fill="fullName"></span>
+  </footer>
+
+  <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));}</script>
+  <script type="module" src="assets/js/page-torneio.js"></script>
+</body>
+</html>

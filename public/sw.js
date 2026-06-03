@@ -5,12 +5,12 @@
  * quando online; cai no cache offline). Requisições externas (Firebase,
  * Google Fonts, QR Code) não são interceptadas.
  */
-const CACHE = "lumix-cs2-v1";
+const CACHE = "lumix-cs2-v2";
 const SHELL = [
   "/",
   "/index.html",
+  "/torneio.html",
   "/inscricao.html",
-  "/login.html",
   "/admin.html",
   "/404.html",
   "/assets/css/styles.css",

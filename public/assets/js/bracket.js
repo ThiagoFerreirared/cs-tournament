@@ -1,13 +1,13 @@
 /**
- * Lógica pura de chaveamento — eliminatória simples com disputa de 3º lugar.
+ * Lógica pura de chaveamento — eliminatória simples (single elimination).
  *
- * Sem dependência de Firebase. O estado da chave é um objeto:
- *   state = { rounds: round[], thirdPlace: match | null }
+ * Sem dependência de Firebase: recebe times, devolve a estrutura da chave.
  *
  * Formatos:
  *   teamSnapshot = { id, name, tag }
- *   match        = { id, team1, team2, score1, score2, winnerId, played, kind }
+ *   match        = { id, team1, team2, score1, score2, winnerId, played }
  *   round        = { name, matches: match[] }
+ *   bracket      = round[]
  */
 
 let matchSeq = 0;
@@ -42,7 +42,7 @@ export function roundName(matchCount) {
   }
 }
 
-function emptyMatch(kind = "normal") {
+function emptyMatch() {
   return {
     id: matchId(),
     team1: null,
@@ -51,7 +51,6 @@ function emptyMatch(kind = "normal") {
     score2: null,
     winnerId: null,
     played: false,
-    kind, // "normal" | "third"
   };
 }
 
@@ -60,7 +59,6 @@ function emptyMatch(kind = "normal") {
  * @param {Array} teams
  * @param {{ random?: boolean }} opts  random=false usa a ordem recebida
  *        (seeding manual); random=true (padrão) embaralha (sorteio).
- * @returns {{ rounds, thirdPlace }}
  */
 export function createBracket(teams, { random = true } = {}) {
   if (!teams || teams.length < 2) {
@@ -72,7 +70,6 @@ export function createBracket(teams, { random = true } = {}) {
   while (size < ordered.length) size *= 2;
   while (ordered.length < size) ordered.push(null); // byes
 
-  // Primeira fase
   const first = [];
   for (let i = 0; i < size; i += 2) {
     const m = emptyMatch();
@@ -87,15 +84,11 @@ export function createBracket(teams, { random = true } = {}) {
   let count = first.length;
   while (count > 1) {
     count = Math.ceil(count / 2);
-    rounds.push({ name: roundName(count), matches: Array.from({ length: count }, () => emptyMatch()) });
+    rounds.push({ name: roundName(count), matches: Array.from({ length: count }, emptyMatch) });
   }
 
-  // Disputa de 3º lugar só existe quando há semifinal (>= 2 fases).
-  const thirdPlace = rounds.length >= 2 ? emptyMatch("third") : null;
-
-  const state = { rounds, thirdPlace };
-  propagate(state);
-  return state;
+  propagate(rounds);
+  return rounds;
 }
 
 function winnerOf(match) {
@@ -103,14 +96,6 @@ function winnerOf(match) {
   if (match.team1 && match.team1.id === match.winnerId) return match.team1;
   if (match.team2 && match.team2.id === match.winnerId) return match.team2;
   return null;
-}
-function loserOf(match) {
-  if (!match || !match.winnerId || !match.team1 || !match.team2) return null;
-  return match.winnerId === match.team1.id ? match.team2 : match.team1;
-}
-function settledNoLoser(match) {
-  // Partida decidida (ex.: bye) que não produz um perdedor real.
-  return !!match && !!match.winnerId && !(match.team1 && match.team2);
 }
 function isPhantom(match) {
   return !match || (!match.team1 && !match.team2);
@@ -123,12 +108,13 @@ function resetMatch(m) {
 }
 
 /**
- * Propaga vencedores fase a fase (in-place) e preenche a disputa de 3º lugar
- * com os perdedores das semifinais. Retorna { champion, third }.
+ * Propaga vencedores fase a fase (in-place).
+ * - Preenche team1/team2 das fases seguintes com os vencedores.
+ * - Resolve byes automáticos só quando o lado adjacente é "fantasma".
+ * - Invalida resultados a jusante que deixaram de fazer sentido.
+ * Retorna o snapshot do campeão (ou null).
  */
-export function propagate(state) {
-  const { rounds } = state;
-
+export function propagate(rounds) {
   for (let i = 0; i < rounds.length - 1; i++) {
     const cur = rounds[i].matches;
     const next = rounds[i + 1].matches;
@@ -152,41 +138,17 @@ export function propagate(state) {
       }
     }
   }
-
-  // Disputa de 3º lugar: perdedores das duas semifinais.
-  if (state.thirdPlace && rounds.length >= 2) {
-    const semis = rounds[rounds.length - 2].matches;
-    const tp = state.thirdPlace;
-    tp.team1 = loserOf(semis[0]);
-    tp.team2 = loserOf(semis[1]);
-    if (!tp.played) {
-      tp.winnerId = null;
-      tp.score1 = null;
-      tp.score2 = null;
-      // Se uma das semis não gera perdedor (bye), o outro perdedor leva o 3º.
-      if (tp.team1 && !tp.team2 && settledNoLoser(semis[1])) tp.winnerId = tp.team1.id;
-      else if (tp.team2 && !tp.team1 && settledNoLoser(semis[0])) tp.winnerId = tp.team2.id;
-    } else {
-      const stillValid = tp.winnerId === tp.team1?.id || tp.winnerId === tp.team2?.id;
-      if (!stillValid) resetMatch(tp);
-    }
-  }
-
   const final = rounds[rounds.length - 1]?.matches[0];
-  return { champion: winnerOf(final), third: winnerOf(state.thirdPlace) };
+  return winnerOf(final);
 }
 
 /**
- * Registra o resultado de uma partida e repropaga.
- * roundIndex pode ser o índice numérico de uma fase ou a string "third"
- * para a disputa de 3º lugar. Não muta a entrada.
- * @returns {{ rounds, thirdPlace, champion, third }}
+ * Registra o resultado de uma partida e repropaga. Não muta a entrada.
+ * @returns {{ rounds, champion }}
  */
-export function applyResult(state, roundIndex, matchIndex, score1, score2) {
-  const copy = structuredClone(state);
-  const match =
-    roundIndex === "third" ? copy.thirdPlace : copy.rounds[roundIndex]?.matches?.[matchIndex];
-
+export function applyResult(rounds, roundIndex, matchIndex, score1, score2) {
+  const copy = structuredClone(rounds);
+  const match = copy[roundIndex]?.matches?.[matchIndex];
   if (!match) throw new Error("Partida não encontrada.");
   if (!match.team1 || !match.team2) throw new Error("A partida ainda não tem dois times.");
   if (score1 === score2) throw new Error("Não pode haver empate — defina um vencedor.");
@@ -196,13 +158,12 @@ export function applyResult(state, roundIndex, matchIndex, score1, score2) {
   match.winnerId = score1 > score2 ? match.team1.id : match.team2.id;
   match.played = true;
 
-  const { champion, third } = propagate(copy);
-  return { rounds: copy.rounds, thirdPlace: copy.thirdPlace, champion, third };
+  const champion = propagate(copy);
+  return { rounds: copy, champion };
 }
 
-/** Total de partidas (fases + disputa de 3º lugar). */
-export function totalMatches(state) {
-  if (!state || !state.rounds) return 0;
-  const inRounds = state.rounds.reduce((s, r) => s + r.matches.length, 0);
-  return inRounds + (state.thirdPlace ? 1 : 0);
+/** Total de partidas na chave. */
+export function totalMatches(rounds) {
+  if (!rounds) return 0;
+  return rounds.reduce((sum, r) => sum + r.matches.length, 0);
 }

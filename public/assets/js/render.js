@@ -71,24 +71,6 @@ function teamRow(name, score, cls) {
   return `<div class="b-team ${cls}"><span class="b-team-name">${escapeHtml(name)}</span>${scoreHtml}</div>`;
 }
 
-/** Card autônomo da disputa de 3º lugar. */
-export function thirdPlaceHTML(tp, { interactive = false } = {}) {
-  if (!tp) return "";
-  const t1 = tp.team1 ? tp.team1.name : "A definir";
-  const t2 = tp.team2 ? tp.team2.name : "A definir";
-  const w = tp.winnerId;
-  const cls1 = w ? (tp.team1 && tp.team1.id === w ? "winner" : "loser") : "";
-  const cls2 = w ? (tp.team2 && tp.team2.id === w ? "winner" : "loser") : "";
-  const canClick = interactive && !tp.winnerId && tp.team1 && tp.team2;
-  const attr = canClick ? ' data-third="1"' : "";
-  return `<div class="third-place">
-    <div class="third-place-head">🥉 Disputa de 3º lugar</div>
-    <div class="b-match${canClick ? " clickable" : ""}"${attr} style="width:${MATCH_W}px">
-      ${teamRow(t1, tp.score1, cls1)}${teamRow(t2, tp.score2, cls2)}
-    </div>
-  </div>`;
-}
-
 /** Avatar (TAG ou iniciais) com cor determinística. */
 export function teamAvatarHTML(team, { size } = {}) {
   const label = (team.tag || team.name || "??").slice(0, 2).toUpperCase();
