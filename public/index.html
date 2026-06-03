@@ -57,7 +57,7 @@
     Desenvolvido por <span data-fill="author"></span>
   </footer>
 
-  <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));}</script>
+  <script>if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(rs=>{if(!rs.length)return;Promise.all(rs.map(r=>r.unregister())).then(()=>window.caches&&caches.keys().then(ks=>Promise.all(ks.map(k=>caches.delete(k))))).then(()=>location.reload());});}</script>
   <script type="module" src="assets/js/page-login.js"></script>
 </body>
 </html>

@@ -25,7 +25,7 @@ ao vivo — tudo sincronizado em tempo real via Firebase.
   - **Resumo financeiro** (arrecadado × pendente) e **export CSV** dos times
   - Confirmar pagamento, **editar** e remover times
   - Notificações no navegador a cada nova inscrição
-- **PWA instalável** com cache offline do app shell (manifest + service worker).
+- **Ícones e metadados de instalação** (web manifest com ícones e tema).
 - **Compartilhamento rico** (imagem Open Graph) e **Google Analytics** opcional.
 - **Contagem regressiva** opcional para a data de início.
 - **Tema claro/escuro** persistente e layout responsivo (desktop e mobile).
@@ -51,8 +51,8 @@ cs-tournament/
 │   ├── inscricao.html          # inscrição de times
 │   ├── admin.html              # painel administrativo (protegido)
 │   ├── 404.html
-│   ├── manifest.webmanifest    # PWA
-│   ├── sw.js                   # service worker (offline)
+│   ├── manifest.webmanifest    # PWA (ícones/metadados)
+│   ├── sw.js                   # service worker auto-limpante (desativado)
 │   └── assets/
 │       ├── css/styles.css      # design system (tokens + componentes)
 │       ├── img/                # favicon, ícones PWA, imagem Open Graph
