@@ -113,51 +113,6 @@ npm run deploy:rules            # publica firestore.rules
 
 O projeto já aponta para `torneio-cs` em [`.firebaserc`](.firebaserc).
 
-## 🔐 Configuração do Firebase
-
-### Criar o administrador
-
-O painel usa **Authentication → Sign-in method → E-mail/senha**. No
-[console do Firebase](https://console.firebase.google.com/project/torneio-cs/authentication/users),
-ative o provedor e crie o usuário admin (ex.: `thiago@lumixfibra.com.br`).
-
-Para digitar só `thiago` no login em vez do e-mail completo, mantenha o atalho
-em [`public/assets/js/config.js`](public/assets/js/config.js):
-
-```js
-export const adminAliases = { thiago: "thiago@lumixfibra.com.br" };
-```
-
-### Regras de segurança
-
-Estão em [`firestore.rules`](firestore.rules) e seguem o princípio:
-
-- **Leitura pública** (a página ao vivo precisa exibir os dados);
-- **Inscrição pública** permitida com validação e só com inscrições abertas;
-- **Escritas administrativas** (sorteio, placares, remoção) exigem login.
-
-Publique com `npm run deploy:rules`.
-
-> A `apiKey` do Firebase no `config.js` é **pública por design** — ela apenas
-> identifica o projeto. A segurança real vem das regras acima e da autenticação.
-
-## 🗃️ Modelo de dados (Firestore)
-
-```
-teams/{id}
-  name, tag, contact, email, players[],
-  paymentStatus: "pendente" | "confirmado",
-  paymentAmount, paymentNote, createdAt
-
-tournament/main
-  registrationOpen: bool
-  phase: "Inscrição" | "Inscrições encerradas" | "Em andamento" | "Finalizado"
-  champion: { id, name } | null
-
-tournament/bracket
-  rounds: [ { name, matches: [ { id, team1, team2, score1, score2, winnerId, played } ] } ]
-```
-
 ## ⚙️ Personalização
 
 Quase tudo (nome, datas, premiação, valor da inscrição, chave PIX, limites)
