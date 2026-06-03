@@ -16,10 +16,15 @@ ao vivo — tudo sincronizado em tempo real via Firebase.
   (nome único, mínimo de jogadores) e bloqueio quando as inscrições encerram.
 - **Painel administrativo protegido** (login por e-mail/senha):
   - Encerrar / reabrir inscrições
-  - Sorteio automático da chave (eliminatória simples, com _byes_)
+  - Sorteio da chave **aleatório ou manual** (eliminatória simples, com _byes_)
   - Registro de placares com propagação automática dos vencedores
-  - Confirmação de pagamento e remoção de times
+  - **Disputa de 3º lugar** automática entre os perdedores das semifinais
+  - **Resumo financeiro** (arrecadado × pendente) e **export CSV** dos times
+  - Confirmar pagamento, **editar** e remover times
   - Notificações no navegador a cada nova inscrição
+- **PWA instalável** com cache offline do app shell (manifest + service worker).
+- **Compartilhamento rico** (imagem Open Graph) e **Google Analytics** opcional.
+- **Contagem regressiva** opcional para a data de início.
 - **Tema claro/escuro** persistente e layout responsivo (desktop e mobile).
 
 ## 🧱 Stack
@@ -43,20 +48,24 @@ cs-tournament/
 │   ├── login.html              # login do admin
 │   ├── admin.html              # painel administrativo (protegido)
 │   ├── 404.html
+│   ├── manifest.webmanifest    # PWA
+│   ├── sw.js                   # service worker (offline)
 │   └── assets/
 │       ├── css/styles.css      # design system (tokens + componentes)
-│       ├── img/favicon.svg
+│       ├── img/                # favicon, ícones PWA, imagem Open Graph
 │       └── js/
 │           ├── config.js       # ⚙️ configuração do torneio + Firebase
 │           ├── firebase.js     # inicialização do Firebase
 │           ├── auth.js         # login / logout / proteção de rota
 │           ├── store.js        # camada de dados (Firestore)
-│           ├── bracket.js      # lógica pura da chave eliminatória
-│           ├── render.js       # HTML compartilhado (chave, times)
-│           ├── ui.js           # tema, toasts, formatação, escape XSS
+│           ├── bracket.js      # lógica pura da chave (+ 3º lugar)
+│           ├── render.js       # HTML compartilhado (chave, conectores)
+│           ├── ui.js           # tema, toasts, formatação, CSV, escape XSS
+│           ├── analytics.js    # Google Analytics (gtag)
 │           └── page-*.js       # script de cada página
+├── functions/                  # Cloud Function de e-mail (opcional)
 ├── vercel.json                 # hospedagem (serve a pasta public/)
-├── firebase.json               # config do Firestore (regras/índices)
+├── firebase.json               # config do Firestore + Functions
 ├── firestore.rules             # regras de segurança
 ├── firestore.indexes.json
 ├── .firebaserc                 # projeto Firebase (torneio-cs)
@@ -101,6 +110,25 @@ npm run deploy:rules            # publica firestore.rules
 ```
 
 O projeto já aponta para `torneio-cs` em [`.firebaserc`](.firebaserc).
+
+## 📧 E-mail de confirmação (opcional, Cloud Functions)
+
+Há uma função em [`functions/`](functions/index.js) que envia um e-mail de
+confirmação quando um time se inscreve. É **opcional** e exige:
+
+1. **Plano Blaze** no Firebase (Cloud Functions requer).
+2. Configurar os segredos de SMTP (Gmail com senha de app, Brevo, Mailgun…):
+   ```bash
+   firebase functions:secrets:set SMTP_HOST
+   firebase functions:secrets:set SMTP_USER
+   firebase functions:secrets:set SMTP_PASS
+   ```
+3. Instalar e publicar:
+   ```bash
+   cd functions && npm install && npm run deploy
+   ```
+
+Sem isso, o site funciona normalmente — apenas não envia e-mails.
 
 ## 🔐 Configuração do Firebase
 
@@ -153,6 +181,16 @@ Quase tudo (nome, datas, premiação, valor da inscrição, chave PIX, limites)
 vive num só lugar: [`public/assets/js/config.js`](public/assets/js/config.js).
 Edite lá e todas as páginas se atualizam — os textos são injetados via
 atributos `data-fill`.
+
+Outros ajustes:
+
+- **Contagem regressiva:** defina `startDate` (ISO) no config para exibir o
+  contador na home; deixe `null` para ocultá-lo.
+- **Google Analytics:** já usa o `measurementId` do config (não roda em
+  localhost). Deixe vazio para desativar.
+- **Imagem de compartilhamento:** [`assets/img/og.png`](public/assets/img/og.png).
+  Para prévias perfeitas no WhatsApp/Discord, troque as metatags `og:image`
+  pelo URL absoluto do seu domínio quando ele estiver definido.
 
 ## 📄 Licença
 

@@ -10,6 +10,12 @@
   <meta property="og:title" content="1º Campeonato Lumix Fibra CS2" />
   <meta property="og:description" content="Acompanhe o torneio de CS2 ao vivo: times, chave e resultados." />
   <meta property="og:type" content="website" />
+  <meta property="og:image" content="/assets/img/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300..700&display=swap" rel="stylesheet" />
@@ -40,6 +46,10 @@
       <span data-fill="dates"></span> &nbsp;•&nbsp; <span data-fill="format"></span>
       &nbsp;•&nbsp; Inscrição <span data-fill="fee"></span> &nbsp;•&nbsp; Premiação <span data-fill="prizePool"></span>
     </p>
+    <div id="countdown" class="countdown hidden" data-countdown-wrap>
+      <span class="countdown-label">Começa em</span>
+      <span class="countdown-value" data-countdown></span>
+    </div>
     <a href="inscricao.html" class="btn btn-primary btn-lg">📝 Inscrever meu time</a>
   </section>
 
@@ -50,6 +60,7 @@
         <div class="champion-crown">🏆</div>
         <div class="champion-title" id="champion-name">—</div>
         <div class="champion-sub">Campeão do <span data-fill="fullName"></span></div>
+        <div class="champion-sub text-gold" id="champion-third" style="margin-top:var(--space-1)"></div>
       </div>
     </div>
 
@@ -112,6 +123,7 @@
     &nbsp;·&nbsp; <span data-fill="fullName"></span>
   </footer>
 
+  <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));}</script>
   <script type="module" src="assets/js/page-index.js"></script>
 </body>
 </html>

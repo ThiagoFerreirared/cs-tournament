@@ -37,7 +37,10 @@ const DEFAULT_SETTINGS = {
   registrationOpen: true,
   phase: "Inscrição",
   champion: null,
+  third: null,
 };
+
+const EMPTY_BRACKET = { rounds: [], thirdPlace: null };
 
 /* ------------------------------------------------------------------ *
  * Inicialização
@@ -51,7 +54,7 @@ export async function ensureDocs() {
     await setDoc(settingsRef, { ...DEFAULT_SETTINGS, updatedAt: serverTimestamp() });
   }
   if (!bracketSnap.exists()) {
-    await setDoc(bracketRef, { rounds: [], updatedAt: serverTimestamp() });
+    await setDoc(bracketRef, { ...EMPTY_BRACKET, updatedAt: serverTimestamp() });
   }
 }
 
@@ -74,8 +77,8 @@ export function watchTeams(callback) {
 
 export function watchBracket(callback) {
   return onSnapshot(bracketRef, (snap) => {
-    const data = snap.exists() ? snap.data() : { rounds: [] };
-    callback(data.rounds || []);
+    const data = snap.exists() ? snap.data() : EMPTY_BRACKET;
+    callback({ rounds: data.rounds || [], thirdPlace: data.thirdPlace || null });
   });
 }
 
@@ -124,6 +127,10 @@ export async function setPaymentStatus(teamId, status) {
   });
 }
 
+export async function updateTeam(teamId, data) {
+  await updateDoc(doc(db, "teams", teamId), { ...data, updatedAt: serverTimestamp() });
+}
+
 export async function deleteTeam(teamId) {
   await deleteDoc(doc(db, "teams", teamId));
 }
@@ -142,11 +149,12 @@ export async function setRegistrationOpen(open) {
 /** Reabre inscrições e descarta a chave/campeão existentes. */
 export async function reopenRegistration() {
   await Promise.all([
-    setDoc(bracketRef, { rounds: [], updatedAt: serverTimestamp() }),
+    setDoc(bracketRef, { ...EMPTY_BRACKET, updatedAt: serverTimestamp() }),
     updateDoc(settingsRef, {
       registrationOpen: true,
       phase: "Inscrição",
       champion: null,
+      third: null,
       updatedAt: serverTimestamp(),
     }),
   ]);
@@ -155,30 +163,34 @@ export async function reopenRegistration() {
 /* ------------------------------------------------------------------ *
  * Chave
  * ------------------------------------------------------------------ */
-export async function drawBracket(teams) {
-  const rounds = createBracket(teams);
-  await setDoc(bracketRef, { rounds, updatedAt: serverTimestamp() });
+export async function drawBracket(teams, { random = true } = {}) {
+  const { rounds, thirdPlace } = createBracket(teams, { random });
+  await setDoc(bracketRef, { rounds, thirdPlace, updatedAt: serverTimestamp() });
   await updateDoc(settingsRef, {
     registrationOpen: false,
     phase: "Em andamento",
     champion: null,
+    third: null,
     updatedAt: serverTimestamp(),
   });
 }
 
 /**
  * Registra o resultado de uma partida: recalcula a chave inteira e atualiza
- * a fase/campeão de forma atômica.
+ * fase/campeão/3º lugar de forma atômica.
+ * @param {{rounds, thirdPlace}} state  estado atual da chave
+ * @param {number|"third"} roundIndex
  */
-export async function reportResult(rounds, roundIndex, matchIndex, score1, score2) {
-  const { rounds: updated, champion } = applyResult(rounds, roundIndex, matchIndex, score1, score2);
-  await setDoc(bracketRef, { rounds: updated, updatedAt: serverTimestamp() });
+export async function reportResult(state, roundIndex, matchIndex, score1, score2) {
+  const r = applyResult(state, roundIndex, matchIndex, score1, score2);
+  await setDoc(bracketRef, { rounds: r.rounds, thirdPlace: r.thirdPlace, updatedAt: serverTimestamp() });
   await updateDoc(settingsRef, {
-    champion: champion || null,
-    phase: champion ? "Finalizado" : "Em andamento",
+    champion: r.champion || null,
+    third: r.third || null,
+    phase: r.champion ? "Finalizado" : "Em andamento",
     updatedAt: serverTimestamp(),
   });
-  return { rounds: updated, champion };
+  return r;
 }
 
 /* ------------------------------------------------------------------ *
@@ -190,7 +202,7 @@ export async function resetTournament() {
   snap.docs.forEach((d) => batch.delete(d.ref));
   await batch.commit();
   await Promise.all([
-    setDoc(bracketRef, { rounds: [], updatedAt: serverTimestamp() }),
+    setDoc(bracketRef, { ...EMPTY_BRACKET, updatedAt: serverTimestamp() }),
     setDoc(settingsRef, { ...DEFAULT_SETTINGS, updatedAt: serverTimestamp() }),
   ]);
 }

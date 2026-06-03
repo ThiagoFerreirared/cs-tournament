@@ -132,6 +132,56 @@ export function pixQrUrl(key, fee, brand) {
 }
 
 /* ------------------------------------------------------------------ *
+ * Contagem regressiva (usa tournament.startDate)
+ * ------------------------------------------------------------------ */
+const pad = (n) => String(n).padStart(2, "0");
+
+export function startCountdown(wrapEl) {
+  if (!wrapEl) return;
+  const valueEl = wrapEl.querySelector("[data-countdown]");
+  const target = tournament.startDate ? new Date(tournament.startDate) : null;
+  if (!valueEl || !target || isNaN(target)) {
+    wrapEl.classList.add("hidden");
+    return;
+  }
+  wrapEl.classList.remove("hidden");
+  const tick = () => {
+    const diff = target - Date.now();
+    if (diff <= 0) {
+      valueEl.innerHTML = "<b>ao vivo</b>";
+      return;
+    }
+    const d = Math.floor(diff / 864e5);
+    const h = Math.floor((diff % 864e5) / 36e5);
+    const m = Math.floor((diff % 36e5) / 6e4);
+    const s = Math.floor((diff % 6e4) / 1e3);
+    valueEl.innerHTML = `<b>${d}</b>d <b>${pad(h)}</b>h <b>${pad(m)}</b>m <b>${pad(s)}</b>s`;
+  };
+  tick();
+  setInterval(tick, 1000);
+}
+
+/* ------------------------------------------------------------------ *
+ * Export CSV (com BOM para abrir certo no Excel)
+ * ------------------------------------------------------------------ */
+export function downloadCSV(filename, rows) {
+  const csv = rows.map((r) => r.map(csvCell).join(",")).join("\r\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+function csvCell(v) {
+  const s = String(v ?? "");
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/* ------------------------------------------------------------------ *
  * Tema claro/escuro com persistência
  * ------------------------------------------------------------------ */
 const THEME_KEY = "lumix-theme";

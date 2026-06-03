@@ -6,36 +6,37 @@ import { tournament } from "./config.js";
 import { requireAuth, logout } from "./auth.js";
 import {
   ensureDocs, watchTeams, watchSettings, watchBracket,
-  isNameTaken, registerTeam, deleteTeam, setPaymentStatus,
+  isNameTaken, registerTeam, updateTeam, deleteTeam, setPaymentStatus,
   setRegistrationOpen, reopenRegistration, drawBracket, reportResult,
   resetTournament,
 } from "./store.js";
-import { bracketTreeHTML, teamAvatarHTML } from "./render.js";
+import { bracketTreeHTML, thirdPlaceHTML, teamAvatarHTML, teamsSkeleton } from "./render.js";
 import {
   initTheme, fillStaticContent, toast, escapeHtml, getInitials,
-  formatDateTime, pixQrUrl,
+  formatDateTime, formatBRL, pixQrUrl, downloadCSV,
 } from "./ui.js";
+import { initAnalytics } from "./analytics.js";
 
 const $ = (id) => document.getElementById(id);
 
 /* ---- Estado (espelho do Firestore) ---- */
 let teams = [];
-let settings = { registrationOpen: true, phase: "Inscrição", champion: null };
-let bracket = [];
+let settings = { registrationOpen: true, phase: "Inscrição", champion: null, third: null };
+let bracket = { rounds: [], thirdPlace: null };
 let selectedTeamId = null;
 let teamsInitialized = false;
 let knownTeamIds = new Set();
 
 /* ---- Boot ---- */
 initTheme();
+initAnalytics();
 fillStaticContent();
 window.logout = () => logout();
 
 requireAuth(() => {
   $("admin-shell").classList.remove("hidden");
-  document.getElementById("pix-qr").src = pixQrUrl(
-    tournament.pix.key, tournament.registrationFee, tournament.brand
-  );
+  $("pix-qr").src = pixQrUrl(tournament.pix.key, tournament.registrationFee, tournament.brand);
+  $("teams-grid").innerHTML = teamsSkeleton(6);
   ensureDocs().catch((e) => console.warn("ensureDocs:", e));
   watchTeams(onTeams);
   watchSettings(onSettings);
@@ -44,12 +45,9 @@ requireAuth(() => {
 
 function onTeams(list) {
   teams = list;
-  // Notificação de nova inscrição (após o carregamento inicial)
   if (teamsInitialized) {
     for (const t of teams) {
-      if (!knownTeamIds.has(t.id)) {
-        notify("Nova inscrição", `Time ${t.name} foi cadastrado.`);
-      }
+      if (!knownTeamIds.has(t.id)) notify("Nova inscrição", `Time ${t.name} foi cadastrado.`);
     }
   }
   knownTeamIds = new Set(teams.map((t) => t.id));
@@ -57,15 +55,13 @@ function onTeams(list) {
   renderDashboard();
   renderTeamsPage();
 }
-
 function onSettings(s) {
   settings = s;
   renderDashboard();
   updateRegBanner();
 }
-
-function onBracket(rounds) {
-  bracket = rounds;
+function onBracket(data) {
+  bracket = data;
   renderDashboard();
   renderBracketPage();
 }
@@ -86,24 +82,31 @@ window.showPage = (name) => {
  * Dashboard
  * ================================================================ */
 function renderDashboard() {
-  $("stat-teams").textContent = teams.length;
-
+  const fee = tournament.registrationFee;
   const paid = teams.filter((t) => (t.paymentStatus || "pendente") === "confirmado").length;
+  const pending = teams.length - paid;
+
+  $("stat-teams").textContent = teams.length;
   $("stat-paid").textContent = paid;
   $("stat-paid-sub").textContent =
-    teams.length && paid === teams.length ? "todos confirmados" : `${teams.length - paid} pendentes`;
-
+    teams.length && paid === teams.length ? "todos confirmados" : `${pending} pendentes`;
   $("stat-phase").textContent = settings.phase || "Inscrição";
-  $("stat-matches").textContent = bracket.reduce((s, r) => s + r.matches.length, 0);
+  $("stat-matches").textContent = (bracket.rounds || []).reduce((s, r) => s + r.matches.length, 0);
   $("stat-champion").textContent = settings.champion ? settings.champion.name : "—";
+
+  // Resumo financeiro
+  $("fin-arrecadado").textContent = formatBRL(paid * fee);
+  $("fin-pendente").textContent = formatBRL(pending * fee);
+  $("fin-potencial").textContent = formatBRL(teams.length * fee);
 
   // Banner
   const banner = $("dashboard-status-banner");
   const text = $("dashboard-status-text");
+  const hasBracket = (bracket.rounds || []).length > 0;
   if (settings.champion) {
     banner.className = "status-banner champion";
     text.textContent = `🏆 Campeão: ${settings.champion.name}`;
-  } else if (bracket.length) {
+  } else if (hasBracket) {
     banner.className = "status-banner started";
     text.textContent = "⚔️ Torneio em andamento — registre os resultados";
   } else if (settings.registrationOpen === false) {
@@ -114,20 +117,17 @@ function renderDashboard() {
     text.textContent = `✅ Inscrições abertas — ${teams.length} time(s) inscrito(s)`;
   }
 
-  // Botões de administração
-  const hasBracket = bracket.length > 0;
+  // Botões
   $("btn-close-reg").classList.toggle("hidden", settings.registrationOpen === false);
   $("btn-reopen").classList.toggle("hidden", settings.registrationOpen !== false);
   $("btn-draw").disabled = hasBracket || teams.length < 2;
   $("btn-draw").textContent = hasBracket ? "Chave já gerada" : "Realizar Sorteio";
 
-  // Lista recente
+  // Recentes
   const list = $("dashboard-teams-list");
-  if (teams.length === 0) {
-    list.innerHTML = `<p class="text-muted" style="padding:var(--space-4) 0">Nenhum time inscrito ainda.</p>`;
-  } else {
-    list.innerHTML = [...teams].slice(-5).reverse().map(teamCardHTML).join("");
-  }
+  list.innerHTML = teams.length === 0
+    ? `<p class="text-muted" style="padding:var(--space-4) 0">Nenhum time inscrito ainda.</p>`
+    : [...teams].slice(-5).reverse().map(teamCardHTML).join("");
 }
 
 window.closeRegistration = async () => {
@@ -135,22 +135,15 @@ window.closeRegistration = async () => {
   await setRegistrationOpen(false);
   toast("🔒 Inscrições encerradas. Realize o sorteio!");
 };
-
 window.reopenRegistration = async () => {
-  if (bracket.length && !confirm("Reabrir inscrições vai descartar a chave atual. Confirma?")) return;
+  if (bracket.rounds.length && !confirm("Reabrir inscrições vai descartar a chave atual. Confirma?")) return;
   await reopenRegistration();
   toast("🔓 Inscrições reabertas!");
 };
-
 window.resetTournament = async () => {
   if (!confirm("Resetar TUDO? Times, sorteio e resultados serão apagados.")) return;
-  try {
-    await resetTournament();
-    toast("Torneio resetado.");
-  } catch (e) {
-    console.error(e);
-    toast("Erro ao resetar.", "error");
-  }
+  try { await resetTournament(); toast("Torneio resetado."); }
+  catch (e) { console.error(e); toast("Erro ao resetar.", "error"); }
 };
 
 /* ================================================================ *
@@ -170,24 +163,18 @@ function updateRegBanner() {
     if (btn) btn.disabled = true;
   }
 }
-
 window.clearRegForm = () => {
-  ["team-name", "team-tag", "team-contact", "team-email", "payment-note"]
-    .forEach((id) => ($(id).value = ""));
+  ["team-name", "team-tag", "team-contact", "team-email", "payment-note"].forEach((id) => ($(id).value = ""));
   for (let i = 1; i <= tournament.maxPlayers; i++) $("player-" + i).value = "";
   $("reg-error").classList.add("hidden");
 };
-
 window.copyPixKey = () => {
-  navigator.clipboard?.writeText(tournament.pix.key)
-    .then(() => toast("Chave PIX copiada!"));
+  navigator.clipboard?.writeText(tournament.pix.key).then(() => toast("Chave PIX copiada!"));
 };
-
 window.registerTeam = async () => {
   const err = $("reg-error");
   err.classList.add("hidden");
   const show = (m) => { err.textContent = m; err.classList.remove("hidden"); };
-
   if (settings.registrationOpen === false) return show("Inscrições encerradas.");
   const name = $("team-name").value.trim();
   if (!name) return show("Nome do time é obrigatório.");
@@ -245,6 +232,7 @@ function teamCardHTML(t) {
 
 function renderTeamsPage() {
   $("teams-count-label").textContent = `${teams.length} time(s) cadastrado(s)`;
+  $("btn-export-csv").disabled = teams.length === 0;
   const grid = $("teams-grid");
   if (teams.length === 0) {
     grid.innerHTML = `<div class="empty-state">
@@ -257,6 +245,19 @@ function renderTeamsPage() {
   grid.innerHTML = teams.map(teamCardHTML).join("");
 }
 
+window.exportCSV = () => {
+  if (teams.length === 0) return;
+  const header = ["Nome", "TAG", "Contato", "Email", "Pagamento", "Valor", "Jogadores", "Inscrito em"];
+  const rows = teams.map((t) => [
+    t.name, t.tag || "", t.contact || "", t.email || "",
+    t.paymentStatus || "pendente", t.paymentAmount ?? tournament.registrationFee,
+    (t.players || []).join(" | "), formatDateTime(t.createdAt ?? t.registeredAt),
+  ]);
+  downloadCSV(`times-${tournament.brand.toLowerCase().replace(/\s+/g, "-")}.csv`, [header, ...rows]);
+  toast("📄 CSV exportado.");
+};
+
+/* ---- Modal de time ---- */
 window.showTeamModal = (id) => {
   const t = teams.find((x) => x.id === id);
   if (!t) return;
@@ -279,16 +280,10 @@ window.showTeamModal = (id) => {
     <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-2)">
       ${(t.players || []).map((p, i) => `<div class="player-chip"><span class="player-num">${i + 1}</span><span>${escapeHtml(p)}</span></div>`).join("")}
     </div>`;
-
-  const payBtn = $("team-modal-pay");
-  if (status === "confirmado") {
-    payBtn.classList.add("hidden");
-  } else {
-    payBtn.classList.remove("hidden");
-  }
+  $("team-modal-pay").classList.toggle("hidden", status === "confirmado");
+  $("team-modal-edit").classList.remove("hidden");
   $("team-modal").classList.add("open");
 };
-
 window.closeTeamModal = () => $("team-modal").classList.remove("open");
 
 window.confirmPaymentFromModal = async () => {
@@ -297,34 +292,128 @@ window.confirmPaymentFromModal = async () => {
   toast("💰 Pagamento confirmado.");
   window.closeTeamModal();
 };
-
 window.deleteTeamFromModal = async () => {
   const t = teams.find((x) => x.id === selectedTeamId);
   if (!t) return;
   if (!confirm(`Remover o time "${t.name}"?`)) return;
-  if (bracket.length && !confirm("A chave já foi gerada. Remover mesmo assim?")) return;
+  if (bracket.rounds.length && !confirm("A chave já foi gerada. Remover mesmo assim?")) return;
   await deleteTeam(selectedTeamId);
   toast("Time removido.");
   window.closeTeamModal();
 };
 
+/* ---- Edição de time ---- */
+window.editTeam = () => {
+  const t = teams.find((x) => x.id === selectedTeamId);
+  if (!t) return;
+  const playerInputs = Array.from({ length: tournament.maxPlayers }, (_, i) =>
+    `<input class="form-input" id="edit-player-${i + 1}" value="${escapeHtml(t.players?.[i] || "")}" placeholder="Jogador ${i + 1}" style="margin-bottom:6px">`
+  ).join("");
+  $("team-modal-title").textContent = `Editar ${t.name}`;
+  $("team-modal-content").innerHTML = `
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="edit-name" value="${escapeHtml(t.name)}" maxlength="32"></div>
+      <div class="form-group"><label class="form-label">TAG</label><input class="form-input" id="edit-tag" value="${escapeHtml(t.tag || "")}" maxlength="5" style="text-transform:uppercase"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Contato</label><input class="form-input" id="edit-contact" value="${escapeHtml(t.contact || "")}"></div>
+      <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="edit-email" value="${escapeHtml(t.email || "")}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Jogadores (mín. ${tournament.minPlayers})</label>${playerInputs}</div>
+    <div id="edit-error" class="form-error hidden"></div>`;
+  $("team-modal-edit").classList.add("hidden");
+  $("team-modal-pay").classList.add("hidden");
+  $("team-modal-save").classList.remove("hidden");
+};
+
+window.saveTeamEdit = async () => {
+  const err = $("edit-error");
+  const show = (m) => { err.textContent = m; err.classList.remove("hidden"); };
+  const name = $("edit-name").value.trim();
+  if (!name) return show("Nome é obrigatório.");
+  const players = [];
+  for (let i = 1; i <= tournament.maxPlayers; i++) {
+    const v = $("edit-player-" + i).value.trim();
+    if (v) players.push(v);
+  }
+  if (players.length < tournament.minPlayers) return show(`Mínimo de ${tournament.minPlayers} jogadores.`);
+  try {
+    await updateTeam(selectedTeamId, {
+      name,
+      tag: $("edit-tag").value.trim().toUpperCase() || getInitials(name),
+      contact: $("edit-contact").value.trim(),
+      email: $("edit-email").value.trim(),
+      players,
+    });
+    toast("✅ Time atualizado.");
+    $("team-modal-save").classList.add("hidden");
+    window.closeTeamModal();
+  } catch (e) {
+    console.error(e);
+    show("Erro ao salvar.");
+  }
+};
+
 /* ================================================================ *
- * Sorteio
+ * Sorteio (com modo manual e animação)
  * ================================================================ */
+let drawMode = "random";
+let drawOrder = [];
+
 window.openDrawModal = () => {
   if (teams.length < 2) return toast("Inscreva ao menos 2 times.", "warning");
-  if (bracket.length) return toast("A chave já foi gerada.", "warning");
-  $("draw-teams-preview").innerHTML = teams
-    .map((t) => `<span class="badge badge-neutral">${escapeHtml(t.name)}</span>`).join("");
+  if (bracket.rounds.length) return toast("A chave já foi gerada.", "warning");
+  drawMode = "random";
+  drawOrder = [...teams];
+  renderDrawPreview();
+  setDrawModeUI();
   $("draw-modal").classList.add("open");
 };
 window.closeDrawModal = () => $("draw-modal").classList.remove("open");
+
+window.setDrawMode = (mode) => {
+  drawMode = mode;
+  setDrawModeUI();
+  renderDrawPreview();
+};
+function setDrawModeUI() {
+  $("draw-mode-random").classList.toggle("active", drawMode === "random");
+  $("draw-mode-manual").classList.toggle("active", drawMode === "manual");
+  $("draw-hint").textContent = drawMode === "random"
+    ? "Os times serão distribuídos aleatoriamente na chave."
+    : "Defina a ordem dos confrontos (1×2, 3×4, ...). Use as setas para reordenar.";
+  $("btn-confirm-draw").textContent = drawMode === "random" ? "Sortear Agora" : "Gerar Chave";
+}
+function renderDrawPreview() {
+  const el = $("draw-teams-preview");
+  if (drawMode === "random") {
+    el.innerHTML = teams.map((t) => `<span class="badge badge-neutral">${escapeHtml(t.name)}</span>`).join("");
+  } else {
+    el.innerHTML = drawOrder.map((t, i) => `
+      <div class="seed-row">
+        <span class="seed-num">${i + 1}</span>
+        <span class="seed-name">${escapeHtml(t.name)}</span>
+        <span class="seed-actions">
+          <button class="btn btn-ghost btn-sm" onclick="moveSeed('${t.id}',-1)" ${i === 0 ? "disabled" : ""}>↑</button>
+          <button class="btn btn-ghost btn-sm" onclick="moveSeed('${t.id}',1)" ${i === drawOrder.length - 1 ? "disabled" : ""}>↓</button>
+        </span>
+      </div>`).join("");
+  }
+}
+window.moveSeed = (id, dir) => {
+  const i = drawOrder.findIndex((t) => t.id === id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= drawOrder.length) return;
+  [drawOrder[i], drawOrder[j]] = [drawOrder[j], drawOrder[i]];
+  renderDrawPreview();
+};
 
 window.performDraw = async () => {
   const btn = $("btn-confirm-draw");
   btn.disabled = true;
   try {
-    await drawBracket(teams);
+    if (drawMode === "random") await animateShuffle($("draw-teams-preview"));
+    await drawBracket(drawMode === "manual" ? drawOrder : teams, { random: drawMode === "random" });
     window.closeDrawModal();
     window.showPage("bracket");
     toast("🎰 Sorteio realizado! Chave gerada.");
@@ -335,6 +424,16 @@ window.performDraw = async () => {
     btn.disabled = false;
   }
 };
+function animateShuffle(el) {
+  return new Promise((resolve) => {
+    let n = 0;
+    const iv = setInterval(() => {
+      const shuffled = [...teams].sort(() => Math.random() - 0.5);
+      el.innerHTML = shuffled.map((t) => `<span class="badge badge-neutral">${escapeHtml(t.name)}</span>`).join("");
+      if (++n >= 14) { clearInterval(iv); resolve(); }
+    }, 55);
+  });
+}
 
 /* ================================================================ *
  * Chave
@@ -342,7 +441,7 @@ window.performDraw = async () => {
 function renderBracketPage() {
   const content = $("bracket-content");
   const sub = $("bracket-subtitle");
-  if (bracket.length === 0) {
+  if (bracket.rounds.length === 0) {
     sub.textContent = "Realize o sorteio para gerar a chave";
     content.innerHTML = `<div class="empty-state">
       <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
@@ -357,15 +456,16 @@ function renderBracketPage() {
 
   let html = "";
   if (settings.champion) {
-    html += `<div class="champion-banner"><div class="champion-crown">🏆</div><div class="champion-title">${escapeHtml(settings.champion.name)}</div><div class="champion-sub">Campeão do torneio</div></div>`;
+    html += `<div class="champion-banner"><div class="champion-crown">🏆</div><div class="champion-title">${escapeHtml(settings.champion.name)}</div><div class="champion-sub">Campeão do torneio${settings.third ? ` · 🥉 3º lugar: ${escapeHtml(settings.third.name)}` : ""}</div></div>`;
   }
-  html += bracketTreeHTML(bracket, { interactive: true });
+  html += bracketTreeHTML(bracket.rounds, { interactive: true });
+  html += thirdPlaceHTML(bracket.thirdPlace, { interactive: true });
   content.innerHTML = html;
 
-  // Delegação de clique nas partidas jogáveis
   content.querySelectorAll(".b-match.clickable").forEach((el) => {
     el.addEventListener("click", () => {
-      openScoreModal(Number(el.dataset.round), Number(el.dataset.match));
+      if (el.dataset.third) openScoreModal("third");
+      else openScoreModal(Number(el.dataset.round), Number(el.dataset.match));
     });
   });
 }
@@ -373,9 +473,10 @@ function renderBracketPage() {
 /* ---- Modal de placar ---- */
 let scoreRound = null, scoreMatch = null;
 function openScoreModal(ri, mi) {
-  const match = bracket[ri]?.matches?.[mi];
+  const match = ri === "third" ? bracket.thirdPlace : bracket.rounds[ri]?.matches?.[mi];
   if (!match || match.winnerId || !match.team1 || !match.team2) return;
   scoreRound = ri; scoreMatch = mi;
+  $("score-modal-title").textContent = ri === "third" ? "🥉 Resultado — 3º lugar" : "Registrar Resultado";
   $("score-team1-name").textContent = match.team1.name;
   $("score-team2-name").textContent = match.team2.name;
   $("score-team1").value = 0;
@@ -407,14 +508,13 @@ window.saveScore = async () => {
  * ================================================================ */
 window.requestNotifications = () => {
   if (!("Notification" in window)) return toast("Navegador sem suporte a notificações.", "warning");
-  Notification.requestPermission().then((p) => {
+  Notification.requestPermission().then((p) =>
     toast(p === "granted" ? "🔔 Notificações ativadas!" : "Notificações não habilitadas.",
-      p === "granted" ? "success" : "warning");
-  });
+      p === "granted" ? "success" : "warning"));
 };
 function notify(title, body) {
   if (window.Notification?.permission === "granted") {
-    const n = new Notification(title, { body, icon: "assets/img/favicon.svg" });
+    const n = new Notification(title, { body, icon: "assets/img/icon-192.png" });
     setTimeout(() => n.close(), 5000);
   }
 }

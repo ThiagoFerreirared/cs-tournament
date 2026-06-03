@@ -1,16 +1,22 @@
 /**
  * Home pública — acompanhamento ao vivo do torneio.
  */
-import { tournament, fullName, prizePool } from "./config.js";
+import { prizePool } from "./config.js";
 import { ensureDocs, watchTeams, watchSettings, watchBracket } from "./store.js";
-import { bracketTreeHTML, teamAvatarHTML } from "./render.js";
+import { bracketTreeHTML, thirdPlaceHTML, teamAvatarHTML, teamsSkeleton } from "./render.js";
 import {
-  initTheme, escapeHtml, formatBRL, fillStaticContent,
+  initTheme, escapeHtml, formatBRL, fillStaticContent, startCountdown,
 } from "./ui.js";
+import { initAnalytics } from "./analytics.js";
 
 initTheme();
+initAnalytics();
 fillStaticContent();
 document.getElementById("stat-prize").textContent = formatBRL(prizePool);
+startCountdown(document.getElementById("countdown"));
+
+// Skeleton enquanto o primeiro snapshot não chega
+document.getElementById("teams-grid").innerHTML = teamsSkeleton(6);
 
 ensureDocs().catch((e) => console.warn("ensureDocs:", e));
 
@@ -45,6 +51,8 @@ watchSettings((s) => {
   const champ = document.getElementById("champion-section");
   if (s.champion) {
     document.getElementById("champion-name").textContent = s.champion.name;
+    const third = document.getElementById("champion-third");
+    third.textContent = s.third ? `🥉 3º lugar: ${s.third.name}` : "";
     champ.classList.remove("hidden");
   } else {
     champ.classList.add("hidden");
@@ -52,7 +60,7 @@ watchSettings((s) => {
 });
 
 /* ---- Chave ---- */
-watchBracket((rounds) => {
+watchBracket(({ rounds, thirdPlace }) => {
   const container = document.getElementById("bracket-public");
   if (!rounds || rounds.length === 0) {
     container.innerHTML = `<div class="empty-state">
@@ -62,6 +70,6 @@ watchBracket((rounds) => {
     document.getElementById("stat-matches").textContent = "0";
     return;
   }
-  container.innerHTML = bracketTreeHTML(rounds, { interactive: false });
+  container.innerHTML = bracketTreeHTML(rounds, { interactive: false }) + thirdPlaceHTML(thirdPlace);
   document.getElementById("stat-matches").textContent = rounds[0]?.matches?.length || 0;
 });

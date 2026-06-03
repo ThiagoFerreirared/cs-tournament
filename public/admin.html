@@ -7,6 +7,8 @@
   <meta name="robots" content="noindex" />
   <meta name="theme-color" content="#0d0e10" />
   <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300..700&display=swap" rel="stylesheet" />
@@ -72,6 +74,15 @@
           <div class="stat-card"><div class="stat-label">Jogos</div><div class="stat-value" id="stat-matches">0</div><div class="stat-sub">na chave</div></div>
           <div class="stat-card"><div class="stat-label">Pagamentos</div><div class="stat-value" id="stat-paid">0</div><div class="stat-sub" id="stat-paid-sub">pendentes</div></div>
           <div class="stat-card"><div class="stat-label">Campeão</div><div class="stat-value sm" id="stat-champion">—</div></div>
+        </div>
+
+        <div class="card" style="margin-bottom:var(--space-6)">
+          <div class="card-header"><span class="card-title">💰 Resumo Financeiro</span><button class="btn btn-ghost btn-sm" onclick="exportCSV()">Exportar CSV</button></div>
+          <div class="stats-row" style="margin-bottom:0">
+            <div class="stat-card"><div class="stat-label">Arrecadado</div><div class="stat-value text-success" id="fin-arrecadado">R$ 0</div><div class="stat-sub">PIX confirmado</div></div>
+            <div class="stat-card"><div class="stat-label">Pendente</div><div class="stat-value text-warning" id="fin-pendente">R$ 0</div><div class="stat-sub">a confirmar</div></div>
+            <div class="stat-card"><div class="stat-label">Potencial total</div><div class="stat-value" id="fin-potencial">R$ 0</div><div class="stat-sub">todos os times</div></div>
+          </div>
         </div>
 
         <div class="card" style="margin-bottom:var(--space-6)">
@@ -163,10 +174,16 @@
       <section class="page" id="page-teams">
         <div class="page-header">
           <div><h1 class="page-title">Times Inscritos</h1><p class="page-subtitle" id="teams-count-label">0 times cadastrados</p></div>
-          <button class="btn btn-primary" onclick="showPage('register')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Novo Time
-          </button>
+          <div class="row">
+            <button class="btn btn-secondary" id="btn-export-csv" onclick="exportCSV()" disabled>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Exportar CSV
+            </button>
+            <button class="btn btn-primary" onclick="showPage('register')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Novo Time
+            </button>
+          </div>
         </div>
         <div id="teams-grid" class="teams-grid"></div>
       </section>
@@ -191,7 +208,11 @@
   <div class="modal-overlay" id="draw-modal">
     <div class="modal">
       <div class="modal-header"><h2 class="modal-title">🎰 Sorteio da Chave</h2><button class="modal-close" onclick="closeDrawModal()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-      <p class="text-muted" style="font-size:var(--text-sm);margin-bottom:var(--space-4)">O sorteio distribui os times aleatoriamente na chave eliminatória e encerra as inscrições. Confirma?</p>
+      <div class="seg-control">
+        <button class="seg-btn active" id="draw-mode-random" onclick="setDrawMode('random')">🎲 Aleatório</button>
+        <button class="seg-btn" id="draw-mode-manual" onclick="setDrawMode('manual')">✋ Manual</button>
+      </div>
+      <p class="text-muted" id="draw-hint" style="font-size:var(--text-sm);margin:var(--space-3) 0 var(--space-4)">Os times serão distribuídos aleatoriamente na chave.</p>
       <div id="draw-teams-preview" class="row" style="margin-bottom:var(--space-4)"></div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeDrawModal()">Cancelar</button>
@@ -202,7 +223,7 @@
 
   <div class="modal-overlay" id="score-modal">
     <div class="modal">
-      <div class="modal-header"><h2 class="modal-title">Registrar Resultado</h2><button class="modal-close" onclick="closeScoreModal()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div class="modal-header"><h2 class="modal-title" id="score-modal-title">Registrar Resultado</h2><button class="modal-close" onclick="closeScoreModal()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
       <div class="score-input-row">
         <div><div style="font-family:var(--font-display);font-weight:700;text-align:center;margin-bottom:var(--space-3)" id="score-team1-name">Time 1</div><input class="form-input score-number" type="number" min="0" max="99" id="score-team1" value="0" /></div>
         <div class="vs">VS</div>
@@ -222,12 +243,15 @@
       <div id="team-modal-content"></div>
       <div class="modal-footer">
         <button class="btn btn-success btn-sm" id="team-modal-pay" onclick="confirmPaymentFromModal()">💰 Confirmar pagamento</button>
+        <button class="btn btn-secondary btn-sm" id="team-modal-edit" onclick="editTeam()">✏️ Editar</button>
+        <button class="btn btn-primary btn-sm hidden" id="team-modal-save" onclick="saveTeamEdit()">Salvar alterações</button>
         <button class="btn btn-danger btn-sm" onclick="deleteTeamFromModal()">Remover Time</button>
         <button class="btn btn-secondary" onclick="closeTeamModal()">Fechar</button>
       </div>
     </div>
   </div>
 
+  <script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));}</script>
   <script type="module" src="assets/js/page-admin.js"></script>
 </body>
 </html>

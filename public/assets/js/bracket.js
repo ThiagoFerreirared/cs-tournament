@@ -1,14 +1,13 @@
 /**
- * Lógica pura de chaveamento — eliminatória simples (single elimination).
+ * Lógica pura de chaveamento — eliminatória simples com disputa de 3º lugar.
  *
- * Sem dependência de Firebase: recebe times, devolve a estrutura da chave.
- * Isso mantém a regra de negócio testável e reutilizável entre páginas.
+ * Sem dependência de Firebase. O estado da chave é um objeto:
+ *   state = { rounds: round[], thirdPlace: match | null }
  *
  * Formatos:
  *   teamSnapshot = { id, name, tag }
- *   match        = { id, team1, team2, score1, score2, winnerId, played }
+ *   match        = { id, team1, team2, score1, score2, winnerId, played, kind }
  *   round        = { name, matches: match[] }
- *   bracket      = round[]
  */
 
 let matchSeq = 0;
@@ -43,7 +42,7 @@ export function roundName(matchCount) {
   }
 }
 
-function emptyMatch() {
+function emptyMatch(kind = "normal") {
   return {
     id: matchId(),
     team1: null,
@@ -52,50 +51,51 @@ function emptyMatch() {
     score2: null,
     winnerId: null,
     played: false,
+    kind, // "normal" | "third"
   };
 }
 
 /**
  * Monta a chave a partir da lista de times.
- * Embaralha (sorteio), completa com "byes" até a próxima potência de 2 e
- * propaga os byes automaticamente.
+ * @param {Array} teams
+ * @param {{ random?: boolean }} opts  random=false usa a ordem recebida
+ *        (seeding manual); random=true (padrão) embaralha (sorteio).
+ * @returns {{ rounds, thirdPlace }}
  */
-export function createBracket(teams) {
+export function createBracket(teams, { random = true } = {}) {
   if (!teams || teams.length < 2) {
-    throw new Error("São necessários ao menos 2 times para sortear a chave.");
+    throw new Error("São necessários ao menos 2 times para gerar a chave.");
   }
 
-  const seeded = shuffle(teams.map(teamSnapshot));
+  const ordered = (random ? shuffle(teams) : [...teams]).map(teamSnapshot);
   let size = 2;
-  while (size < seeded.length) size *= 2;
-  while (seeded.length < size) seeded.push(null); // byes
+  while (size < ordered.length) size *= 2;
+  while (ordered.length < size) ordered.push(null); // byes
 
   // Primeira fase
   const first = [];
   for (let i = 0; i < size; i += 2) {
     const m = emptyMatch();
-    m.team1 = seeded[i] || null;
-    m.team2 = seeded[i + 1] || null;
-    // Bye: um lado vazio → o outro avança automaticamente.
+    m.team1 = ordered[i] || null;
+    m.team2 = ordered[i + 1] || null;
     if (m.team1 && !m.team2) m.winnerId = m.team1.id;
     else if (!m.team1 && m.team2) m.winnerId = m.team2.id;
     first.push(m);
   }
 
   const rounds = [{ name: roundName(first.length), matches: first }];
-
-  // Fases seguintes, vazias
   let count = first.length;
   while (count > 1) {
     count = Math.ceil(count / 2);
-    rounds.push({
-      name: roundName(count),
-      matches: Array.from({ length: count }, emptyMatch),
-    });
+    rounds.push({ name: roundName(count), matches: Array.from({ length: count }, () => emptyMatch()) });
   }
 
-  propagate(rounds);
-  return rounds;
+  // Disputa de 3º lugar só existe quando há semifinal (>= 2 fases).
+  const thirdPlace = rounds.length >= 2 ? emptyMatch("third") : null;
+
+  const state = { rounds, thirdPlace };
+  propagate(state);
+  return state;
 }
 
 function winnerOf(match) {
@@ -104,54 +104,17 @@ function winnerOf(match) {
   if (match.team2 && match.team2.id === match.winnerId) return match.team2;
   return null;
 }
-
+function loserOf(match) {
+  if (!match || !match.winnerId || !match.team1 || !match.team2) return null;
+  return match.winnerId === match.team1.id ? match.team2 : match.team1;
+}
+function settledNoLoser(match) {
+  // Partida decidida (ex.: bye) que não produz um perdedor real.
+  return !!match && !!match.winnerId && !(match.team1 && match.team2);
+}
 function isPhantom(match) {
   return !match || (!match.team1 && !match.team2);
 }
-
-/**
- * Propaga vencedores fase a fase (in-place).
- * - Preenche team1/team2 das fases seguintes com os vencedores anteriores.
- * - Resolve byes automáticos apenas quando o lado adjacente é "fantasma"
- *   (nunca terá time) — não quando a partida ainda está pendente.
- * - Invalida resultados a jusante que deixaram de fazer sentido.
- * Retorna o snapshot do campeão (ou null).
- */
-export function propagate(rounds) {
-  for (let i = 0; i < rounds.length - 1; i++) {
-    const cur = rounds[i].matches;
-    const next = rounds[i + 1].matches;
-    for (let j = 0; j < next.length; j++) {
-      const c1 = cur[2 * j];
-      const c2 = cur[2 * j + 1];
-      const parent = next[j];
-      const w1 = winnerOf(c1);
-      const w2 = winnerOf(c2);
-      parent.team1 = w1;
-      parent.team2 = w2;
-
-      if (parent.played) {
-        // Mantém o resultado humano, a menos que o vencedor não esteja mais
-        // entre os times da partida (algo mudou numa fase anterior).
-        const stillValid =
-          parent.winnerId === parent.team1?.id ||
-          parent.winnerId === parent.team2?.id;
-        if (!stillValid) resetMatch(parent);
-      } else {
-        // Reavalia bye automático.
-        parent.winnerId = null;
-        parent.score1 = null;
-        parent.score2 = null;
-        if (w1 && isPhantom(c2)) parent.winnerId = w1.id;
-        else if (w2 && isPhantom(c1)) parent.winnerId = w2.id;
-      }
-    }
-  }
-
-  const final = rounds[rounds.length - 1]?.matches[0];
-  return winnerOf(final);
-}
-
 function resetMatch(m) {
   m.winnerId = null;
   m.score1 = null;
@@ -160,13 +123,70 @@ function resetMatch(m) {
 }
 
 /**
- * Registra o resultado de uma partida e repropaga a chave.
- * Não muta a entrada: trabalha sobre uma cópia.
- * Retorna { rounds, champion }.
+ * Propaga vencedores fase a fase (in-place) e preenche a disputa de 3º lugar
+ * com os perdedores das semifinais. Retorna { champion, third }.
  */
-export function applyResult(rounds, roundIndex, matchIndex, score1, score2) {
-  const copy = structuredClone(rounds);
-  const match = copy[roundIndex]?.matches?.[matchIndex];
+export function propagate(state) {
+  const { rounds } = state;
+
+  for (let i = 0; i < rounds.length - 1; i++) {
+    const cur = rounds[i].matches;
+    const next = rounds[i + 1].matches;
+    for (let j = 0; j < next.length; j++) {
+      const c1 = cur[2 * j];
+      const c2 = cur[2 * j + 1];
+      const parent = next[j];
+      parent.team1 = winnerOf(c1);
+      parent.team2 = winnerOf(c2);
+
+      if (parent.played) {
+        const stillValid =
+          parent.winnerId === parent.team1?.id || parent.winnerId === parent.team2?.id;
+        if (!stillValid) resetMatch(parent);
+      } else {
+        parent.winnerId = null;
+        parent.score1 = null;
+        parent.score2 = null;
+        if (parent.team1 && isPhantom(c2)) parent.winnerId = parent.team1.id;
+        else if (parent.team2 && isPhantom(c1)) parent.winnerId = parent.team2.id;
+      }
+    }
+  }
+
+  // Disputa de 3º lugar: perdedores das duas semifinais.
+  if (state.thirdPlace && rounds.length >= 2) {
+    const semis = rounds[rounds.length - 2].matches;
+    const tp = state.thirdPlace;
+    tp.team1 = loserOf(semis[0]);
+    tp.team2 = loserOf(semis[1]);
+    if (!tp.played) {
+      tp.winnerId = null;
+      tp.score1 = null;
+      tp.score2 = null;
+      // Se uma das semis não gera perdedor (bye), o outro perdedor leva o 3º.
+      if (tp.team1 && !tp.team2 && settledNoLoser(semis[1])) tp.winnerId = tp.team1.id;
+      else if (tp.team2 && !tp.team1 && settledNoLoser(semis[0])) tp.winnerId = tp.team2.id;
+    } else {
+      const stillValid = tp.winnerId === tp.team1?.id || tp.winnerId === tp.team2?.id;
+      if (!stillValid) resetMatch(tp);
+    }
+  }
+
+  const final = rounds[rounds.length - 1]?.matches[0];
+  return { champion: winnerOf(final), third: winnerOf(state.thirdPlace) };
+}
+
+/**
+ * Registra o resultado de uma partida e repropaga.
+ * roundIndex pode ser o índice numérico de uma fase ou a string "third"
+ * para a disputa de 3º lugar. Não muta a entrada.
+ * @returns {{ rounds, thirdPlace, champion, third }}
+ */
+export function applyResult(state, roundIndex, matchIndex, score1, score2) {
+  const copy = structuredClone(state);
+  const match =
+    roundIndex === "third" ? copy.thirdPlace : copy.rounds[roundIndex]?.matches?.[matchIndex];
+
   if (!match) throw new Error("Partida não encontrada.");
   if (!match.team1 || !match.team2) throw new Error("A partida ainda não tem dois times.");
   if (score1 === score2) throw new Error("Não pode haver empate — defina um vencedor.");
@@ -176,12 +196,13 @@ export function applyResult(rounds, roundIndex, matchIndex, score1, score2) {
   match.winnerId = score1 > score2 ? match.team1.id : match.team2.id;
   match.played = true;
 
-  const champion = propagate(copy);
-  return { rounds: copy, champion };
+  const { champion, third } = propagate(copy);
+  return { rounds: copy.rounds, thirdPlace: copy.thirdPlace, champion, third };
 }
 
-/** Total de partidas "reais" (com dois times de verdade) na chave. */
-export function totalMatches(rounds) {
-  if (!rounds) return 0;
-  return rounds.reduce((sum, r) => sum + r.matches.length, 0);
+/** Total de partidas (fases + disputa de 3º lugar). */
+export function totalMatches(state) {
+  if (!state || !state.rounds) return 0;
+  const inRounds = state.rounds.reduce((s, r) => s + r.matches.length, 0);
+  return inRounds + (state.thirdPlace ? 1 : 0);
 }

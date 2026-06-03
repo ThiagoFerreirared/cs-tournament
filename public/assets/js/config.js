@@ -33,6 +33,9 @@ export const tournament = {
   // Logística
   dates: "15, 16 e 17 de maio",
   format: "100% online · Eliminatória simples",
+  // Data/hora de início (ISO) para a contagem regressiva. Deixe null para
+  // ocultar o contador. Ex.: "2026-05-15T20:00:00-03:00".
+  startDate: null,
 
   // Limites de inscrição
   maxTeams: 16,
