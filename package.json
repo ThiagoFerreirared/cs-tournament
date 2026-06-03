@@ -6,8 +6,6 @@
   "type": "module",
   "scripts": {
     "dev": "npx --yes serve public -l 5173",
-    "deploy": "firebase deploy",
-    "deploy:hosting": "firebase deploy --only hosting",
     "deploy:rules": "firebase deploy --only firestore:rules",
     "emulators": "firebase emulators:start"
   },

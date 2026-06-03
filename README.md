@@ -28,7 +28,7 @@ ao vivo — tudo sincronizado em tempo real via Firebase.
 |---|---|
 | Frontend | HTML + CSS + JavaScript (ES Modules) — **sem build, sem framework** |
 | Backend | Firebase **Firestore** (dados em tempo real) + **Auth** (admin) |
-| Hospedagem | Firebase Hosting (ou qualquer host estático) |
+| Hospedagem | **Vercel** (deploy automático a cada push na `main`) |
 
 Sem etapa de build: o navegador carrega os módulos ES diretamente. A única
 exigência é **servir os arquivos via HTTP** (não abrir com `file://`).
@@ -55,7 +55,8 @@ cs-tournament/
 │           ├── render.js       # HTML compartilhado (chave, times)
 │           ├── ui.js           # tema, toasts, formatação, escape XSS
 │           └── page-*.js       # script de cada página
-├── firebase.json               # config de hosting + firestore
+├── vercel.json                 # hospedagem (serve a pasta public/)
+├── firebase.json               # config do Firestore (regras/índices)
 ├── firestore.rules             # regras de segurança
 ├── firestore.indexes.json
 ├── .firebaserc                 # projeto Firebase (torneio-cs)
@@ -77,17 +78,26 @@ dentro de `public/`.)
 > ⚠️ Não abra os `.html` com duplo-clique (`file://`): os módulos ES e o
 > Firebase exigem `http://`.
 
-## ☁️ Deploy (Firebase Hosting)
+## ☁️ Deploy
 
-1. Instale a CLI: `npm install -g firebase-tools`
-2. Autentique: `firebase login`
-3. Publique:
+### Site → Vercel
+
+A Vercel publica automaticamente a cada `git push` na branch `main`. O
+[`vercel.json`](vercel.json) define `public/` como diretório servido — não há
+etapa de build. Nada manual a fazer: só commitar e enviar.
+
+> Se o projeto na Vercel tiver um **Root Directory** configurado, deixe-o vazio
+> (raiz do repositório); o `outputDirectory: public` cuida do resto.
+
+### Banco de dados / regras → Firebase
+
+O Firebase é usado apenas como backend (Firestore + Auth). Para publicar as
+regras de segurança:
 
 ```bash
-npm run deploy            # hosting + regras do Firestore
-# ou separadamente:
-npm run deploy:hosting
-npm run deploy:rules
+npm install -g firebase-tools   # uma vez
+firebase login                  # uma vez
+npm run deploy:rules            # publica firestore.rules
 ```
 
 O projeto já aponta para `torneio-cs` em [`.firebaserc`](.firebaserc).
