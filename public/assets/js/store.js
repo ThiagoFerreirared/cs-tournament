@@ -26,7 +26,11 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db } from "./firebase.js";
-import { createLeague, upsertMap, removeMap as leagueRemoveMap } from "./league.js";
+import {
+  createLeague, upsertMap, removeMap as leagueRemoveMap,
+  setMatchSchedule as leagueSetSchedule, setWalkover as leagueSetWalkover,
+  renamePlayersInLeague as leagueRenamePlayers,
+} from "./league.js";
 import { tournament } from "./config.js";
 
 const settingsRef = doc(db, "tournament", "main");
@@ -205,6 +209,31 @@ export async function saveMap(league, teams, target, payload) {
 export async function removeMap(league, teams, target) {
   const r = leagueRemoveMap(league, teams, target);
   await persistLeagueState(r);
+  return r;
+}
+
+/** Define/limpa o horário agendado de uma partida e persiste. */
+export async function setSchedule(league, teams, target, iso) {
+  const r = leagueSetSchedule(league, target, iso);
+  await persistLeagueState(r);
+  return r;
+}
+
+/** Declara/desfaz vitória por W.O. e persiste o novo estado. */
+export async function setWalkover(league, teams, target, winnerId) {
+  const r = leagueSetWalkover(league, teams, target, winnerId);
+  await persistLeagueState(r);
+  return r;
+}
+
+/**
+ * Aplica renomeações de jogadores ({nickAntigo: nickNovo}) aos mapas já
+ * jogados e persiste só o doc da liga. No-op se nada mudou.
+ */
+export async function renameLeaguePlayers(league, teamId, renameMap) {
+  const r = leagueRenamePlayers(league, teamId, renameMap);
+  if (!r) return null;
+  await setDoc(leagueRef, { matches: r.matches, final: r.final, updatedAt: serverTimestamp() });
   return r;
 }
 

@@ -2,7 +2,7 @@
  * Renderizadores de HTML compartilhados (classificação, jogos, final, times).
  * Tudo que vem do usuário passa por escapeHtml — ver ui.js.
  */
-import { escapeHtml, teamGradient } from "./ui.js";
+import { escapeHtml, teamGradient, formatDateTime } from "./ui.js";
 
 /* ------------------------------------------------------------------ *
  * Avatar
@@ -57,9 +57,10 @@ export function standingsHTML(rows, { qualifyCount = 2 } = {}) {
  * ------------------------------------------------------------------ */
 export function playerRankingHTML(rows) {
   if (!rows || rows.length === 0) return "";
+  const medals = ["🥇", "🥈", "🥉"];
   const body = rows
     .map((r, i) => `<tr>
-      <td class="st-pos">${i + 1}</td>
+      <td class="st-pos">${(r.k || r.d || r.a) && medals[i] ? medals[i] : i + 1}</td>
       <td class="st-team">${avatarMini({ name: r.team, tag: r.tag })}<span class="st-name">${escapeHtml(r.nick)}</span></td>
       <td class="st-muted">${escapeHtml(r.team)}</td>
       <td class="st-strong">${r.k}</td>
@@ -93,17 +94,49 @@ export function matchesHTML(rounds, { interactive = false } = {}) {
     .join("");
 }
 
-/** Uma linha de mapa dentro de uma série (mapa + placar de rounds). */
-function mapLineHTML(m, mp, stage, interactive) {
+/** Tabela de scoreboard de um time num mapa. mvpK = maior K do mapa (⭐). */
+function scoreboardTeamHTML(team, players, mvpK) {
+  const list = players || [];
+  if (!list.length) return "";
+  const rows = list
+    .map((p) => {
+      const k = Number(p.k) || 0, d = Number(p.d) || 0, a = Number(p.a) || 0;
+      const kd = (d ? k / d : k).toFixed(2);
+      const star = mvpK > 0 && k === mvpK ? ' <span class="mvp-star" title="MVP do mapa">⭐</span>' : "";
+      return `<tr><td class="sb-nick">${escapeHtml(p.nick)}${star}</td><td>${k}</td><td>${d}</td><td>${a}</td><td>${kd}</td></tr>`;
+    })
+    .join("");
+  return `<div class="map-sb-team">
+    <div class="map-sb-name">${avatarMini(team)}${escapeHtml(team?.name || "")}</div>
+    <table class="map-sb"><thead><tr><th>Jogador</th><th title="Kills">K</th><th title="Mortes">M</th><th title="Assistências">A</th><th title="Kills/Mortes">K/D</th></tr></thead><tbody>${rows}</tbody></table>
+  </div>`;
+}
+
+/** Conteúdo da linha de um mapa (nome + placar de rounds). */
+function mapLineInner(m, mp) {
   const w1 = m.team1 && mp.winnerId === m.team1.id;
   const w2 = m.team2 && mp.winnerId === m.team2.id;
-  const attr = interactive
-    ? ` data-stage="${stage}" data-match="${escapeHtml(m.id)}" data-map="${escapeHtml(mp.id)}"`
-    : "";
-  return `<div class="map-line${interactive ? " clickable" : ""}"${attr}>
-    <span class="ml-map">${escapeHtml(mp.map)}</span>
-    <span class="ml-score"><b class="${w1 ? "win" : ""}">${escapeHtml(mp.score1)}</b><i>:</i><b class="${w2 ? "win" : ""}">${escapeHtml(mp.score2)}</b></span>
-  </div>`;
+  return `<span class="ml-map">${escapeHtml(mp.map)}</span>
+    <span class="ml-score"><b class="${w1 ? "win" : ""}">${escapeHtml(mp.score1)}</b><i>:</i><b class="${w2 ? "win" : ""}">${escapeHtml(mp.score2)}</b></span>`;
+}
+
+/**
+ * Linha de mapa. Admin: clicável para editar. Público: se houver stats, vira
+ * um <details> expansível com o scoreboard de cada time.
+ */
+function mapLineHTML(m, mp, stage, interactive) {
+  if (interactive) {
+    return `<div class="map-line clickable" data-stage="${stage}" data-match="${escapeHtml(m.id)}" data-map="${escapeHtml(mp.id)}">${mapLineInner(m, mp)}</div>`;
+  }
+  const hasStats =
+    (mp.players1 || []).some((p) => p.k || p.d || p.a) ||
+    (mp.players2 || []).some((p) => p.k || p.d || p.a);
+  if (!hasStats) return `<div class="map-line">${mapLineInner(m, mp)}</div>`;
+  const all = [...(mp.players1 || []), ...(mp.players2 || [])];
+  const mvpK = all.reduce((mx, p) => Math.max(mx, Number(p.k) || 0), 0);
+  return `<details class="map-det"><summary class="map-line">${mapLineInner(m, mp)}<span class="ml-caret">▾</span></summary>
+    <div class="map-sb-wrap">${scoreboardTeamHTML(m.team1, mp.players1, mvpK)}${scoreboardTeamHTML(m.team2, mp.players2, mvpK)}</div>
+  </details>`;
 }
 
 /** Bloco com os mapas da série + botão "adicionar mapa" (admin, se cabível). */
@@ -118,6 +151,29 @@ function mapsBlockHTML(m, stage, interactive) {
   return `<div class="map-lines">${lines}${addBtn}</div>`;
 }
 
+/** Faixa de status do confronto: W.O., "ao vivo" ou horário agendado. */
+function matchMeta(m) {
+  if (m.walkover) {
+    const w = m.walkover === m.team1?.id ? m.team1 : m.team2;
+    return `<div class="match-meta"><span class="badge-wo">⚠ W.O. · ${escapeHtml(w?.name || "")} avança</span></div>`;
+  }
+  if (m.scheduledAt) {
+    const t = new Date(m.scheduledAt).getTime();
+    if (!Number.isNaN(t)) {
+      return !m.played && t <= Date.now()
+        ? `<div class="match-meta"><span class="live-tag">🔴 ao vivo</span></div>`
+        : `<div class="match-meta"><span class="sched">🕓 ${escapeHtml(formatDateTime(m.scheduledAt))}</span></div>`;
+    }
+  }
+  return "";
+}
+
+/** Botão de opções (admin): abre horário/W.O. da partida. */
+function matchActions(m, stage, interactive) {
+  if (!interactive) return "";
+  return `<div class="match-actions"><button class="match-opt" type="button" data-stage="${stage}" data-match="${escapeHtml(m.id)}" data-opt="1">⚙️ Horário / W.O.</button></div>`;
+}
+
 /** Cartão de um confronto: placar da série (mapas) + lista de mapas. */
 function matchCard(m, stage, interactive) {
   const w1 = m.winnerId && m.team1 && m.winnerId === m.team1.id;
@@ -130,7 +186,9 @@ function matchCard(m, stage, interactive) {
       <span class="match-score"><b>${escapeHtml(s1)}</b><i>x</i><b>${escapeHtml(s2)}</b></span>
       <span class="match-team right${w2 ? " win" : ""}${m.played && !w2 ? " lose" : ""}">${avatarMini(m.team2)}<span class="mt-name">${escapeHtml(m.team2?.name || "—")}</span></span>
     </div>
+    ${matchMeta(m)}
     ${mapsBlockHTML(m, stage, interactive)}
+    ${matchActions(m, stage, interactive)}
   </div>`;
 }
 
@@ -154,7 +212,9 @@ export function finalHTML(final, { interactive = false } = {}) {
 
   return `<div class="final-block">
     <div class="final-head">🏆 Grande Final <span class="badge badge-primary">MD${final.bestOf}</span></div>
+    ${matchMeta(final)}
     ${inner}
+    ${matchActions(final, "final", interactive)}
   </div>`;
 }
 

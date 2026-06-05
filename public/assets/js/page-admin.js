@@ -9,6 +9,8 @@ import {
   isNameTaken, registerTeam, updateTeam, deleteTeam, setPaymentStatus,
   setRegistrationOpen, reopenRegistration, generateLeague,
   saveMap as apiSaveMap, removeMap as apiRemoveMap,
+  setSchedule as apiSetSchedule, setWalkover as apiSetWalkover,
+  renameLeaguePlayers as apiRenameLeaguePlayers,
   resetTournament,
 } from "./store.js";
 import { standings, matchesByRound, playerRanking } from "./league.js";
@@ -343,10 +345,18 @@ window.saveTeamEdit = async () => {
   const show = (m) => { err.textContent = m; err.classList.remove("hidden"); };
   const name = $("edit-name").value.trim();
   if (!name) return show("Nome é obrigatório.");
+
+  // Compara por posição (índice fixo) para detectar renomeações sem confundir
+  // com remoções/adições. renameMap propaga os novos nicks para os mapas.
+  const current = teams.find((x) => x.id === selectedTeamId);
+  const oldPlayers = current?.players || [];
+  const renameMap = {};
   const players = [];
   for (let i = 1; i <= tournament.maxPlayers; i++) {
-    const v = $("edit-player-" + i).value.trim();
-    if (v) players.push(v);
+    const oldNick = (oldPlayers[i - 1] || "").trim();
+    const newNick = $("edit-player-" + i).value.trim();
+    if (oldNick && newNick && oldNick !== newNick) renameMap[oldNick] = newNick;
+    if (newNick) players.push(newNick);
   }
   if (players.length < tournament.minPlayers) return show(`Mínimo de ${tournament.minPlayers} jogadores.`);
   try {
@@ -357,6 +367,9 @@ window.saveTeamEdit = async () => {
       email: $("edit-email").value.trim(),
       players,
     });
+    if (Object.keys(renameMap).length) {
+      await apiRenameLeaguePlayers(league, selectedTeamId, renameMap);
+    }
     toast("✅ Time atualizado.");
     window.closeTeamModal();
   } catch (e) {
@@ -448,6 +461,9 @@ function renderLeaguePage() {
   content.querySelectorAll(".map-add").forEach((el) => {
     el.addEventListener("click", () => openMapModal(el.dataset.stage, el.dataset.match, null));
   });
+  content.querySelectorAll(".match-opt").forEach((el) => {
+    el.addEventListener("click", () => openMatchModal(el.dataset.stage, el.dataset.match));
+  });
 }
 
 /* ---- Modal de mapa (placar de rounds + K/D/A por jogador dos 2 times) ---- */
@@ -477,10 +493,15 @@ function openMapModal(stage, matchId, mapId) {
   const t2 = teams.find((t) => t.id === match.team2.id);
   const existing = mapId ? (match.maps || []).find((m) => m.id === mapId) : null;
 
-  const nicks1 = existing ? existing.players1.map((p) => p.nick) : (t1?.players || []);
-  const nicks2 = existing ? existing.players2.map((p) => p.nick) : (t2?.players || []);
+  // Nicks vêm do elenco ATUAL (reflete renomeações no menu Times). As stats
+  // salvas no mapa são alinhadas por índice. Fallback aos nicks salvos se o
+  // elenco do time não estiver disponível.
+  const roster1 = t1?.players || [];
+  const roster2 = t2?.players || [];
   const stats1 = existing ? existing.players1 : [];
   const stats2 = existing ? existing.players2 : [];
+  const nicks1 = roster1.length ? roster1 : stats1.map((p) => p.nick);
+  const nicks2 = roster2.length ? roster2 : stats2.map((p) => p.nick);
 
   mapTarget = { stage, matchId, mapId: mapId || null, count1: nicks1.length, count2: nicks2.length };
 
@@ -550,6 +571,78 @@ window.deleteMap = async () => {
   } catch (e) {
     console.error(e);
     toast(e.message || "Erro ao excluir.", "error");
+  }
+};
+
+/* ---- Modal de opções da partida (horário + W.O.) ---- */
+let matchOptTarget = null;
+
+function toLocalInput(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function openMatchModal(stage, matchId) {
+  const match = stage === "final" ? league.final : league.matches.find((m) => m.id === matchId);
+  if (!match) return;
+  matchOptTarget = { stage, matchId };
+  const ready = match.team1 && match.team2;
+  $("match-modal-title").textContent = ready
+    ? `${match.team1.name} vs ${match.team2.name}`
+    : "Grande Final";
+  $("match-sched").value = match.scheduledAt ? toLocalInput(match.scheduledAt) : "";
+
+  const hasMaps = (match.maps || []).length > 0;
+  if (!ready) {
+    $("match-wo").innerHTML = `<div class="form-hint">Finalistas ainda não definidos.</div>`;
+  } else {
+    const woBtns =
+      `<button class="btn btn-secondary btn-sm" onclick="setWO('${match.team1.id}')" ${hasMaps ? "disabled" : ""}>W.O. → ${escapeHtml(match.team1.name)}</button>` +
+      `<button class="btn btn-secondary btn-sm" onclick="setWO('${match.team2.id}')" ${hasMaps ? "disabled" : ""}>W.O. → ${escapeHtml(match.team2.name)}</button>`;
+    const extra = match.walkover
+      ? `<button class="btn btn-ghost btn-sm" onclick="clearWO()">Desfazer W.O.</button>`
+      : hasMaps
+        ? `<div class="form-hint">Remova os mapas para declarar W.O.</div>`
+        : "";
+    $("match-wo").innerHTML = woBtns + extra;
+  }
+  $("match-modal").classList.add("open");
+}
+window.closeMatchModal = () => $("match-modal").classList.remove("open");
+
+window.saveSchedule = async () => {
+  const v = $("match-sched").value;
+  const iso = v ? new Date(v).toISOString() : null;
+  try {
+    await apiSetSchedule(league, teams, matchOptTarget, iso);
+    window.closeMatchModal();
+    toast(iso ? "🕓 Horário salvo." : "Horário removido.");
+  } catch (e) {
+    console.error(e);
+    toast(e.message || "Erro ao salvar horário.", "error");
+  }
+};
+
+window.setWO = async (winnerId) => {
+  try {
+    await apiSetWalkover(league, teams, matchOptTarget, winnerId);
+    window.closeMatchModal();
+    toast("Resultado por W.O. registrado.");
+  } catch (e) {
+    console.error(e);
+    toast(e.message || "Erro ao registrar W.O.", "error");
+  }
+};
+window.clearWO = async () => {
+  try {
+    await apiSetWalkover(league, teams, matchOptTarget, null);
+    window.closeMatchModal();
+    toast("W.O. desfeito.");
+  } catch (e) {
+    console.error(e);
+    toast(e.message || "Erro.", "error");
   }
 };
 

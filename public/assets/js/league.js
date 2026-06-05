@@ -44,6 +44,9 @@ function makeMatch(team1, team2, round, bestOf) {
     score1: null, score2: null, winnerId: null, played: false, bestOf,
     // Cada item de `maps` é um mapa jogado da série — ver upsertMap.
     maps: [],
+    // Agendamento (ISO) e W.O. (id do time que avança sem jogar).
+    scheduledAt: null,
+    walkover: null,
   };
 }
 
@@ -149,6 +152,19 @@ export function validateMapScore(s1, s2) {
  * dos mapas registrados. Muta o match recebido.
  */
 function recomputeSeries(match) {
+  const target = winTarget(match.bestOf);
+
+  // W.O.: time presente vence sem mapas (placar = alvo a 0).
+  if (match.walkover && match.team1 && match.team2) {
+    if (match.walkover === match.team1.id) {
+      match.score1 = target; match.score2 = 0; match.winnerId = match.team1.id;
+    } else {
+      match.score1 = 0; match.score2 = target; match.winnerId = match.team2.id;
+    }
+    match.played = true;
+    return;
+  }
+
   let w1 = 0, w2 = 0;
   for (const mp of match.maps || []) {
     if (match.team1 && mp.winnerId === match.team1.id) w1++;
@@ -156,7 +172,6 @@ function recomputeSeries(match) {
   }
   match.score1 = w1;
   match.score2 = w2;
-  const target = winTarget(match.bestOf);
   if (w1 >= target) { match.winnerId = match.team1.id; match.played = true; }
   else if (w2 >= target) { match.winnerId = match.team2.id; match.played = true; }
   else { match.winnerId = null; match.played = false; }
@@ -186,6 +201,7 @@ export function upsertMap(league, teams, target, payload) {
   const state = structuredClone(league);
   const match = findMatch(state, target);
 
+  if (match.walkover) throw new Error("Desfaça o W.O. antes de lançar mapas.");
   validateMapScore(payload.score1, payload.score2);
   if (!payload.map) throw new Error("Selecione o mapa.");
 
@@ -259,6 +275,72 @@ function syncFinalists(state, teams) {
 function resetMatch(m) {
   m.score1 = null; m.score2 = null; m.winnerId = null; m.played = false;
   m.maps = [];
+  m.walkover = null;
+}
+
+/**
+ * Define (ou limpa) o horário agendado de uma partida. Não muta a entrada.
+ * @param {{ stage:"rr"|"final", matchId?:string }} target
+ * @param {string|null} iso  ISO 8601, ou null para limpar
+ */
+export function setMatchSchedule(league, target, iso) {
+  const state = structuredClone(league);
+  const match = target.stage === "final"
+    ? state.final
+    : state.matches.find((m) => m.id === target.matchId);
+  if (!match) throw new Error("Partida não encontrada.");
+  match.scheduledAt = iso || null;
+  return { matches: state.matches, final: state.final, champion: winnerOf(state.final) };
+}
+
+/**
+ * Declara (winnerId) ou desfaz (null) vitória por W.O. Recalcula série, final
+ * e campeão. Não muta a entrada. Só permitido quando não há mapas lançados.
+ * @param {{ stage:"rr"|"final", matchId?:string }} target
+ */
+export function setWalkover(league, teams, target, winnerId) {
+  const state = structuredClone(league);
+  const match = findMatch(state, target);
+  if (winnerId) {
+    if ((match.maps || []).length) {
+      throw new Error("Remova os mapas antes de declarar W.O.");
+    }
+    if (winnerId !== match.team1.id && winnerId !== match.team2.id) {
+      throw new Error("Time inválido para W.O.");
+    }
+    match.walkover = winnerId;
+  } else {
+    match.walkover = null;
+  }
+  recomputeSeries(match);
+  syncFinalists(state, teams);
+  return { matches: state.matches, final: state.final, champion: winnerOf(state.final) };
+}
+
+/**
+ * Propaga renomeações de jogadores de um time para todos os mapas já jogados.
+ * @param {object} renameMap  { nickAntigo: nickNovo }
+ * @returns {{matches, final}|null}  null se nada mudou
+ */
+export function renamePlayersInLeague(league, teamId, renameMap) {
+  if (!renameMap || Object.keys(renameMap).length === 0) return null;
+  const state = structuredClone(league);
+  let changed = false;
+  const fix = (team, players) => {
+    if (!team || team.id !== teamId) return;
+    for (const p of players || []) {
+      if (renameMap[p.nick] != null) { p.nick = renameMap[p.nick]; changed = true; }
+    }
+  };
+  const all = [...(state.matches || [])];
+  if (state.final) all.push(state.final);
+  for (const m of all) {
+    for (const mp of m.maps || []) {
+      fix(m.team1, mp.players1);
+      fix(m.team2, mp.players2);
+    }
+  }
+  return changed ? { matches: state.matches, final: state.final } : null;
 }
 
 /** Agrupa as partidas por rodada (para exibição). */
