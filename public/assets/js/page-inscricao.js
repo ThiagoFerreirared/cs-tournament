@@ -17,29 +17,44 @@ document.getElementById("pix-qr").src = pixQrUrl(
   tournament.pix.key, tournament.registrationFee, tournament.brand
 );
 
-// Premiação (bolão) ao vivo na hero
+let registrationOpen = true;
+let teamCount = 0;
+
+// Premiação (bolão) ao vivo na hero + contagem de times para o limite de vagas
 watchTeams((teams) => {
+  teamCount = teams.length;
   const { pool } = prizeBreakdown(teams.length);
   const el = document.getElementById("hero-prize");
   if (el) el.textContent = formatBRL(pool);
+  refreshRegState();
 });
-
-let registrationOpen = true;
 
 watchSettings((s) => {
   registrationOpen = s.registrationOpen !== false;
+  refreshRegState();
+});
+
+// Reflete o estado real da inscrição: encerrada, vagas esgotadas ou aberta.
+function refreshRegState() {
   const banner = document.getElementById("reg-status-banner");
   const btn = document.getElementById("btn-register");
-  if (registrationOpen) {
-    banner.className = "status-banner open";
-    banner.querySelector("span").textContent = "Inscrições abertas — cadastre seu time agora";
-    btn.disabled = false;
-  } else {
+  if (!banner) return;
+  const full = teamCount >= tournament.maxTeams;
+  if (!registrationOpen) {
     banner.className = "status-banner closed";
     banner.querySelector("span").textContent = "Inscrições encerradas.";
-    btn.disabled = true;
+    if (btn) btn.disabled = true;
+  } else if (full) {
+    banner.className = "status-banner closed";
+    banner.querySelector("span").textContent =
+      `Vagas esgotadas — ${tournament.maxTeams} times inscritos.`;
+    if (btn) btn.disabled = true;
+  } else {
+    banner.className = "status-banner open";
+    banner.querySelector("span").textContent = "Inscrições abertas — cadastre seu time agora";
+    if (btn) btn.disabled = false;
   }
-});
+}
 
 /* ---- Ações ---- */
 const $ = (id) => document.getElementById(id);
@@ -76,6 +91,9 @@ function hideError() {
 window.registerTeam = async () => {
   hideError();
   if (!registrationOpen) return showError("Inscrições encerradas.");
+  if (teamCount >= tournament.maxTeams) {
+    return showError(`Vagas esgotadas — máximo de ${tournament.maxTeams} times.`);
+  }
 
   const name = $("team-name").value.trim();
   const tag = $("team-tag").value.trim().toUpperCase();

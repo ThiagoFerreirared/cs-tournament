@@ -3,14 +3,22 @@ rules_version = '2';
 // Regras de segurança do Firestore — Lumix Fibra CS2
 //
 // Princípio: leitura pública (a página ao vivo precisa exibir tudo), mas
-// escritas administrativas só com autenticação. A inscrição pública é
-// permitida com validação básica e apenas enquanto as inscrições estiverem
+// escritas administrativas só com o admin autenticado. A inscrição pública é
+// permitida com validação rígida e apenas enquanto as inscrições estiverem
 // abertas.
+//
+// Estas regras são a ÚNICA barreira de escrita: o app é estático e fala
+// direto com o Firestore, sem servidor intermediário.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
-      return request.auth != null;
+    // Apenas o administrador do torneio pode gerenciar dados.
+    // Travar pelo e-mail (não por "está logado") impede que qualquer conta
+    // criada no projeto Firebase consiga escrever. O e-mail é único no
+    // Firebase Auth, então ninguém além do admin pode obtê-lo.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'thiago@lumixfibra.com.br';
     }
 
     function registrationOpen() {
@@ -19,24 +27,35 @@ service cloud.firestore {
       return !exists(main) || get(main).data.registrationOpen == true;
     }
 
+    // Valida uma inscrição pública nova. Caps de tamanho evitam que um script
+    // encha o banco de lixo (spam de inscrições / estouro de cota).
     function validNewTeam() {
       let d = request.resource.data;
-      return d.name is string && d.name.size() > 0 && d.name.size() <= 40
-        && d.players is list && d.players.size() >= 5
+      return d.keys().hasOnly([
+            'name', 'tag', 'contact', 'email', 'players',
+            'paymentNote', 'paymentStatus', 'paymentMethod',
+            'paymentAmount', 'createdAt'
+          ])
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 40
+        && d.tag is string && d.tag.size() <= 5
+        && d.contact is string && d.contact.size() <= 120
+        && d.email is string && d.email.size() <= 120
+        && d.paymentNote is string && d.paymentNote.size() <= 280
+        && d.players is list && d.players.size() >= 5 && d.players.size() <= 6
         && d.paymentStatus == 'pendente';
     }
 
-    // Times: qualquer um lê e se inscreve; só admin altera/remove.
+    // Times: qualquer um lê e se inscreve; só o admin altera/remove.
     match /teams/{teamId} {
       allow read: if true;
       allow create: if validNewTeam() && registrationOpen();
-      allow update, delete: if signedIn();
+      allow update, delete: if isAdmin();
     }
 
     // Estado do torneio e chave: leitura pública, escrita só admin.
     match /tournament/{docId} {
       allow read: if true;
-      allow write: if signedIn();
+      allow write: if isAdmin();
     }
   }
 }
