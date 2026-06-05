@@ -36,13 +36,23 @@ watchTeams((list) => {
   const grid = document.getElementById("teams-grid");
   grid.innerHTML = teams.length === 0
     ? `<div class="empty-state" style="grid-column:1/-1"><p>Nenhum time inscrito ainda.</p></div>`
-    : teams.map((t) => `<div class="team-card" style="cursor:default">
-        ${teamAvatarHTML(t)}
-        <div class="team-info">
-          <div class="team-name">${escapeHtml(t.name)}</div>
-          <div class="team-meta">${(t.players || []).length} jogadores</div>
-        </div>
-      </div>`).join("");
+    : teams.map((t) => {
+        const players = t.players || [];
+        const roster = players.length
+          ? players.map((p, i) => `<li><span class="player-num">${i + 1}</span><span>${escapeHtml(p)}</span></li>`).join("")
+          : `<li class="text-muted">Sem jogadores cadastrados.</li>`;
+        return `<details class="team-pub">
+          <summary>
+            ${teamAvatarHTML(t)}
+            <div class="team-info">
+              <div class="team-name">${escapeHtml(t.name)}</div>
+              <div class="team-meta">${players.length} jogadores · ver elenco</div>
+            </div>
+            <span class="ml-caret">▾</span>
+          </summary>
+          <ul class="team-roster">${roster}</ul>
+        </details>`;
+      }).join("");
 
   renderCompetition();
 });
