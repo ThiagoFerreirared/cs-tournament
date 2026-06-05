@@ -17,6 +17,7 @@
 
 let seq = 0;
 const mid = () => `m${Date.now().toString(36)}${(seq++).toString(36)}`;
+const mapId = () => `g${Date.now().toString(36)}${(seq++).toString(36)}`;
 
 function shuffle(arr) {
   const a = [...arr];
@@ -39,7 +40,10 @@ export function winTarget(bestOf) {
 function makeMatch(team1, team2, round, bestOf) {
   return {
     id: mid(), round, team1, team2,
+    // score1/score2 = MAPAS vencidos por cada time (derivados de `maps`).
     score1: null, score2: null, winnerId: null, played: false, bestOf,
+    // Cada item de `maps` é um mapa jogado da série — ver upsertMap.
+    maps: [],
   };
 }
 
@@ -126,42 +130,105 @@ export function standings(teams, matches, pointsPerWin = 3) {
   return list;
 }
 
-function validateScore(bestOf, s1, s2) {
-  const target = winTarget(bestOf);
-  if (s1 === s2) throw new Error("Não pode haver empate — defina o vencedor.");
-  const hi = Math.max(s1, s2);
-  const lo = Math.min(s1, s2);
-  if (hi !== target || lo < 0 || lo >= target) {
-    throw new Error(`Placar inválido para MD${bestOf}: o vencedor faz ${target} mapas.`);
+/**
+ * Valida o placar de rounds de um mapa (CS2 MR12).
+ * Vencedor precisa de ≥13 rounds, sem empate. Overtime (16, 19...) é aceito.
+ */
+export function validateMapScore(s1, s2) {
+  if (!Number.isInteger(s1) || !Number.isInteger(s2) || s1 < 0 || s2 < 0) {
+    throw new Error("Placar de rounds inválido.");
+  }
+  if (s1 === s2) throw new Error("O mapa não pode terminar empatado.");
+  if (Math.max(s1, s2) < 13) {
+    throw new Error("O vencedor do mapa precisa de ao menos 13 rounds.");
   }
 }
 
 /**
- * Registra o resultado de uma partida (da fase de pontos ou da final) e
- * recalcula o estado. Não muta a entrada.
- * @param {{matches, final}} league
- * @param {Array} teams  lista completa de times (para a classificação)
- * @param {{ stage:"rr"|"final", matchId?:string }} target
- * @returns {{ matches, final, champion }}
+ * Recalcula o resultado da série (mapas vencidos, vencedor, concluída) a partir
+ * dos mapas registrados. Muta o match recebido.
  */
-export function applyMatchResult(league, teams, target, score1, score2) {
-  const state = structuredClone(league);
+function recomputeSeries(match) {
+  let w1 = 0, w2 = 0;
+  for (const mp of match.maps || []) {
+    if (match.team1 && mp.winnerId === match.team1.id) w1++;
+    else if (match.team2 && mp.winnerId === match.team2.id) w2++;
+  }
+  match.score1 = w1;
+  match.score2 = w2;
+  const target = winTarget(match.bestOf);
+  if (w1 >= target) { match.winnerId = match.team1.id; match.played = true; }
+  else if (w2 >= target) { match.winnerId = match.team2.id; match.played = true; }
+  else { match.winnerId = null; match.played = false; }
+}
 
-  let match;
-  if (target.stage === "final") match = state.final;
-  else match = state.matches.find((m) => m.id === target.matchId);
+function findMatch(state, target) {
+  const match = target.stage === "final"
+    ? state.final
+    : state.matches.find((m) => m.id === target.matchId);
   if (!match) throw new Error("Partida não encontrada.");
   if (!match.team1 || !match.team2) throw new Error("A partida ainda não tem dois times.");
+  return match;
+}
 
-  validateScore(match.bestOf, score1, score2);
-  match.score1 = score1;
-  match.score2 = score2;
-  match.winnerId = score1 > score2 ? match.team1.id : match.team2.id;
-  match.played = true;
+/**
+ * Adiciona um mapa novo a uma série, ou edita um existente (se `target.mapId`).
+ * Recalcula a série, a final e o campeão. Não muta a entrada.
+ *
+ * @param {{matches, final}} league
+ * @param {Array} teams
+ * @param {{ stage:"rr"|"final", matchId?:string, mapId?:string }} target
+ * @param {{ map:string, score1:number, score2:number,
+ *           players1:Array, players2:Array }} payload
+ * @returns {{ matches, final, champion }}
+ */
+export function upsertMap(league, teams, target, payload) {
+  const state = structuredClone(league);
+  const match = findMatch(state, target);
 
+  validateMapScore(payload.score1, payload.score2);
+  if (!payload.map) throw new Error("Selecione o mapa.");
+
+  const entry = {
+    id: target.mapId || mapId(),
+    map: payload.map,
+    score1: payload.score1,
+    score2: payload.score2,
+    winnerId: payload.score1 > payload.score2 ? match.team1.id : match.team2.id,
+    players1: payload.players1 || [],
+    players2: payload.players2 || [],
+  };
+
+  match.maps = match.maps || [];
+  if (target.mapId) {
+    const idx = match.maps.findIndex((m) => m.id === target.mapId);
+    if (idx < 0) throw new Error("Mapa não encontrado.");
+    match.maps[idx] = entry;
+  } else {
+    recomputeSeries(match);
+    if (match.played) throw new Error("A série já está decidida.");
+    if (match.maps.length >= match.bestOf) {
+      throw new Error(`Série já tem o máximo de ${match.bestOf} mapas.`);
+    }
+    match.maps.push(entry);
+  }
+
+  recomputeSeries(match);
   syncFinalists(state, teams);
-  const champion = winnerOf(state.final);
-  return { matches: state.matches, final: state.final, champion };
+  return { matches: state.matches, final: state.final, champion: winnerOf(state.final) };
+}
+
+/**
+ * Remove um mapa de uma série e recalcula tudo. Não muta a entrada.
+ * @param {{ stage:"rr"|"final", matchId?:string, mapId:string }} target
+ */
+export function removeMap(league, teams, target) {
+  const state = structuredClone(league);
+  const match = findMatch(state, target);
+  match.maps = (match.maps || []).filter((m) => m.id !== target.mapId);
+  recomputeSeries(match);
+  syncFinalists(state, teams);
+  return { matches: state.matches, final: state.final, champion: winnerOf(state.final) };
 }
 
 /**
@@ -191,6 +258,7 @@ function syncFinalists(state, teams) {
 
 function resetMatch(m) {
   m.score1 = null; m.score2 = null; m.winnerId = null; m.played = false;
+  m.maps = [];
 }
 
 /** Agrupa as partidas por rodada (para exibição). */
@@ -210,24 +278,53 @@ export function totalMatches(league) {
 
 /* ------------------------------------------------------------------ *
  * Ranking de jogadores (kills / mortes / assistências)
- * As estatísticas ficam em team.playerStats (array alinhado a team.players).
+ * As estatísticas são somadas de TODOS os mapas jogados (fase de pontos +
+ * final). Cada mapa guarda players1/players2 = [{ nick, k, d, a }].
  * ------------------------------------------------------------------ */
-export function playerRanking(teams) {
-  const rows = [];
+export function playerRanking(teams, league) {
+  const agg = new Map(); // chave: teamId|nick(minúsculo)
+
+  const ensure = (team, nick) => {
+    const key = `${team.id}|${nick.toLowerCase()}`;
+    let r = agg.get(key);
+    if (!r) {
+      r = { nick, team: team.name, tag: team.tag || "", k: 0, d: 0, a: 0 };
+      agg.set(key, r);
+    }
+    return r;
+  };
+
+  // Semeia todo o elenco — todos os jogadores aparecem, zerados até jogarem.
   for (const t of teams || []) {
-    const players = t.players || [];
-    const stats = t.playerStats || [];
-    players.forEach((nick, i) => {
-      const s = stats[i] || {};
-      const k = Number(s.k) || 0;
-      const d = Number(s.d) || 0;
-      const a = Number(s.a) || 0;
-      rows.push({
-        nick, team: t.name, tag: t.tag || "",
-        k, d, a, kd: d ? k / d : k,
-      });
-    });
+    for (const raw of t.players || []) {
+      const nick = (raw || "").trim();
+      if (nick) ensure({ id: t.id, name: t.name, tag: t.tag }, nick);
+    }
   }
+
+  // Soma as estatísticas de cada mapa jogado (fase de pontos + final).
+  const add = (team, players) => {
+    if (!team) return;
+    for (const p of players || []) {
+      const nick = (p.nick || "").trim();
+      if (!nick) continue;
+      const r = ensure(team, nick);
+      r.k += Number(p.k) || 0;
+      r.d += Number(p.d) || 0;
+      r.a += Number(p.a) || 0;
+    }
+  };
+  const allMatches = [...(league?.matches || [])];
+  if (league?.final) allMatches.push(league.final);
+  for (const m of allMatches) {
+    for (const mp of m.maps || []) {
+      add(m.team1, mp.players1);
+      add(m.team2, mp.players2);
+    }
+  }
+
+  const rows = [...agg.values()];
+  for (const r of rows) r.kd = r.d ? r.k / r.d : r.k;
   rows.sort((x, y) =>
     y.k - x.k || y.kd - x.kd || y.a - x.a || x.nick.localeCompare(y.nick)
   );

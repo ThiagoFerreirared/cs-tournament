@@ -87,24 +87,50 @@ export function matchesHTML(rounds, { interactive = false } = {}) {
     .map(
       ({ round, matches }) => `<div class="round-group">
         <div class="round-label">Rodada ${round}</div>
-        <div class="match-list">${matches.map((m) => matchRow(m, "rr", interactive)).join("")}</div>
+        <div class="match-list">${matches.map((m) => matchCard(m, "rr", interactive)).join("")}</div>
       </div>`
     )
     .join("");
 }
 
-function matchRow(m, stage, interactive) {
+/** Uma linha de mapa dentro de uma série (mapa + placar de rounds). */
+function mapLineHTML(m, mp, stage, interactive) {
+  const w1 = m.team1 && mp.winnerId === m.team1.id;
+  const w2 = m.team2 && mp.winnerId === m.team2.id;
+  const attr = interactive
+    ? ` data-stage="${stage}" data-match="${escapeHtml(m.id)}" data-map="${escapeHtml(mp.id)}"`
+    : "";
+  return `<div class="map-line${interactive ? " clickable" : ""}"${attr}>
+    <span class="ml-map">${escapeHtml(mp.map)}</span>
+    <span class="ml-score"><b class="${w1 ? "win" : ""}">${escapeHtml(mp.score1)}</b><i>:</i><b class="${w2 ? "win" : ""}">${escapeHtml(mp.score2)}</b></span>
+  </div>`;
+}
+
+/** Bloco com os mapas da série + botão "adicionar mapa" (admin, se cabível). */
+function mapsBlockHTML(m, stage, interactive) {
+  const maps = m.maps || [];
+  const lines = maps.map((mp) => mapLineHTML(m, mp, stage, interactive)).join("");
+  const canAdd = interactive && m.team1 && m.team2 && !m.played && maps.length < m.bestOf;
+  const addBtn = canAdd
+    ? `<div class="map-add" data-stage="${stage}" data-match="${escapeHtml(m.id)}" data-add="1" role="button" tabindex="0">+ adicionar mapa</div>`
+    : "";
+  if (!lines && !addBtn) return "";
+  return `<div class="map-lines">${lines}${addBtn}</div>`;
+}
+
+/** Cartão de um confronto: placar da série (mapas) + lista de mapas. */
+function matchCard(m, stage, interactive) {
   const w1 = m.winnerId && m.team1 && m.winnerId === m.team1.id;
   const w2 = m.winnerId && m.team2 && m.winnerId === m.team2.id;
-  // interativo: clicável para registrar OU editar (mesmo já jogado)
-  const canClick = interactive && m.team1 && m.team2;
-  const attr = canClick ? ` data-stage="${stage}" data-id="${escapeHtml(m.id)}"` : "";
-  const s1 = m.score1 ?? "–";
-  const s2 = m.score2 ?? "–";
-  return `<div class="match-row${canClick ? " clickable" : ""}${m.played ? " played" : ""}"${attr}>
-    <span class="match-team left${w1 ? " win" : ""}${m.played && !w1 ? " lose" : ""}"><span class="mt-name">${escapeHtml(m.team1?.name || "—")}</span>${avatarMini(m.team1)}</span>
-    <span class="match-score"><b>${escapeHtml(s1)}</b><i>x</i><b>${escapeHtml(s2)}</b></span>
-    <span class="match-team right${w2 ? " win" : ""}${m.played && !w2 ? " lose" : ""}">${avatarMini(m.team2)}<span class="mt-name">${escapeHtml(m.team2?.name || "—")}</span></span>
+  const s1 = m.score1 ?? 0;
+  const s2 = m.score2 ?? 0;
+  return `<div class="match-card${m.played ? " played" : ""}">
+    <div class="match-row">
+      <span class="match-team left${w1 ? " win" : ""}${m.played && !w1 ? " lose" : ""}"><span class="mt-name">${escapeHtml(m.team1?.name || "—")}</span>${avatarMini(m.team1)}</span>
+      <span class="match-score"><b>${escapeHtml(s1)}</b><i>x</i><b>${escapeHtml(s2)}</b></span>
+      <span class="match-team right${w2 ? " win" : ""}${m.played && !w2 ? " lose" : ""}">${avatarMini(m.team2)}<span class="mt-name">${escapeHtml(m.team2?.name || "—")}</span></span>
+    </div>
+    ${mapsBlockHTML(m, stage, interactive)}
   </div>`;
 }
 
@@ -116,15 +142,14 @@ export function finalHTML(final, { interactive = false } = {}) {
   const ready = final.team1 && final.team2;
   const w1 = final.winnerId && final.team1 && final.winnerId === final.team1.id;
   const w2 = final.winnerId && final.team2 && final.winnerId === final.team2.id;
-  const canClick = interactive && ready; // editável mesmo após jogada
-  const attr = canClick ? ' data-stage="final" data-id="final"' : "";
 
   const inner = ready
-    ? `<div class="final-match${canClick ? " clickable" : ""}"${attr}>
+    ? `<div class="final-match">
          <span class="final-team${w1 ? " win" : ""}${final.played && !w1 ? " lose" : ""}">${teamAvatarHTML(final.team1)}<span>${escapeHtml(final.team1.name)}</span></span>
-         <span class="final-score"><b>${escapeHtml(final.score1 ?? "–")}</b><i>x</i><b>${escapeHtml(final.score2 ?? "–")}</b></span>
+         <span class="final-score"><b>${escapeHtml(final.score1 ?? 0)}</b><i>x</i><b>${escapeHtml(final.score2 ?? 0)}</b></span>
          <span class="final-team right${w2 ? " win" : ""}${final.played && !w2 ? " lose" : ""}"><span>${escapeHtml(final.team2.name)}</span>${teamAvatarHTML(final.team2)}</span>
-       </div>`
+       </div>
+       ${mapsBlockHTML(final, "final", interactive)}`
     : `<div class="final-waiting">Aguardando o fim da fase de pontos para definir os 2 finalistas.</div>`;
 
   return `<div class="final-block">

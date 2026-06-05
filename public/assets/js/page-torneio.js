@@ -81,7 +81,7 @@ function renderCompetition() {
   }
 
   const rows = standings(teams, league.matches, tournament.pointsPerWin);
-  const players = playerRanking(teams);
+  const players = playerRanking(teams, league);
   container.innerHTML =
     `<h3 class="block-title">📊 Classificação</h3>` +
     standingsHTML(rows) +

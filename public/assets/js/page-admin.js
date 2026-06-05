@@ -2,12 +2,13 @@
  * Painel administrativo — gestão do torneio (liga de pontos + final).
  * Fonte da verdade: Firestore (sincronização em tempo real).
  */
-import { tournament, prizeBreakdown } from "./config.js";
+import { tournament, prizeBreakdown, mapPool } from "./config.js";
 import { requireAuth, logout } from "./auth.js";
 import {
   ensureDocs, watchTeams, watchSettings, watchLeague,
   isNameTaken, registerTeam, updateTeam, deleteTeam, setPaymentStatus,
-  setRegistrationOpen, reopenRegistration, generateLeague, reportMatch,
+  setRegistrationOpen, reopenRegistration, generateLeague,
+  saveMap as apiSaveMap, removeMap as apiRemoveMap,
   resetTournament,
 } from "./store.js";
 import { standings, matchesByRound, playerRanking } from "./league.js";
@@ -314,16 +315,9 @@ window.deleteTeamFromModal = async () => {
 window.editTeam = () => {
   const t = teams.find((x) => x.id === selectedTeamId);
   if (!t) return;
-  const stats = t.playerStats || [];
-  const playerInputs = Array.from({ length: tournament.maxPlayers }, (_, i) => {
-    const s = stats[i] || {};
-    return `<div class="stat-edit-row">
-      <input class="form-input" id="edit-player-${i + 1}" value="${escapeHtml(t.players?.[i] || "")}" placeholder="Jogador ${i + 1}">
-      <input class="form-input stat-num" id="edit-k-${i + 1}" type="number" min="0" value="${escapeHtml(s.k ?? 0)}" aria-label="Kills">
-      <input class="form-input stat-num" id="edit-d-${i + 1}" type="number" min="0" value="${escapeHtml(s.d ?? 0)}" aria-label="Mortes">
-      <input class="form-input stat-num" id="edit-a-${i + 1}" type="number" min="0" value="${escapeHtml(s.a ?? 0)}" aria-label="Assistências">
-    </div>`;
-  }).join("");
+  const playerInputs = Array.from({ length: tournament.maxPlayers }, (_, i) =>
+    `<div class="player-row"><span class="player-num">${i + 1}</span><input class="form-input" id="edit-player-${i + 1}" value="${escapeHtml(t.players?.[i] || "")}" placeholder="Jogador ${i + 1}"></div>`
+  ).join("");
   $("team-modal-title").textContent = `Editar ${t.name}`;
   $("team-modal-content").innerHTML = `
     <div class="form-row">
@@ -335,10 +329,9 @@ window.editTeam = () => {
       <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="edit-email" value="${escapeHtml(t.email || "")}"></div>
     </div>
     <div class="form-group">
-      <label class="form-label">Jogadores e estatísticas (mín. ${tournament.minPlayers})</label>
-      <div class="stat-edit-row stat-edit-head"><span>Nick</span><span>K</span><span>M</span><span>A</span></div>
+      <label class="form-label">Jogadores (mín. ${tournament.minPlayers})</label>
       ${playerInputs}
-      <div class="form-hint">K = kills · M = mortes · A = assistências</div>
+      <div class="form-hint">K/D/A é lançado por mapa, na aba Tabela.</div>
     </div>
     <div id="edit-error" class="form-error hidden"></div>`;
   $("team-modal-edit").classList.add("hidden");
@@ -350,14 +343,10 @@ window.saveTeamEdit = async () => {
   const show = (m) => { err.textContent = m; err.classList.remove("hidden"); };
   const name = $("edit-name").value.trim();
   if (!name) return show("Nome é obrigatório.");
-  const num = (id) => Math.max(0, parseInt($(id).value, 10) || 0);
   const players = [];
-  const playerStats = [];
   for (let i = 1; i <= tournament.maxPlayers; i++) {
     const v = $("edit-player-" + i).value.trim();
-    if (!v) continue;
-    players.push(v);
-    playerStats.push({ k: num("edit-k-" + i), d: num("edit-d-" + i), a: num("edit-a-" + i) });
+    if (v) players.push(v);
   }
   if (players.length < tournament.minPlayers) return show(`Mínimo de ${tournament.minPlayers} jogadores.`);
   try {
@@ -367,7 +356,6 @@ window.saveTeamEdit = async () => {
       contact: $("edit-contact").value.trim(),
       email: $("edit-email").value.trim(),
       players,
-      playerStats,
     });
     toast("✅ Time atualizado.");
     window.closeTeamModal();
@@ -443,54 +431,125 @@ function renderLeaguePage() {
     html += `<div class="champion-banner"><div class="champion-crown">🏆</div><div class="champion-title">${escapeHtml(settings.champion.name)}</div><div class="champion-sub">Campeão · leva a premiação inteira</div></div>`;
   }
   const rows = standings(teams, league.matches, tournament.pointsPerWin);
-  const players = playerRanking(teams);
+  const players = playerRanking(teams, league);
   html += `<h3 class="block-title">📊 Classificação</h3>` + standingsHTML(rows);
   if (players.length) {
-    html += `<div class="row" style="justify-content:space-between;margin-top:var(--space-8)"><h3 class="block-title" style="margin:0">🎯 Ranking de Jogadores</h3><span class="form-hint">Edite K/M/A no cadastro do time (aba Times → abrir time → Editar)</span></div>`;
+    html += `<div class="row" style="justify-content:space-between;margin-top:var(--space-8)"><h3 class="block-title" style="margin:0">🎯 Ranking de Jogadores</h3><span class="form-hint">Somado dos mapas de cada jogo (K/D/A por mapa)</span></div>`;
     html += playerRankingHTML(players);
   }
   html += finalHTML(league.final, { interactive: true });
-  html += `<h3 class="block-title" style="margin-top:var(--space-8)">🎮 Jogos · Fase de pontos (MD${tournament.bestOf.round}) <span class="form-hint" style="font-weight:400">— clique para registrar ou editar</span></h3>`;
+  html += `<h3 class="block-title" style="margin-top:var(--space-8)">🎮 Jogos · Fase de pontos (MD${tournament.bestOf.round}) <span class="form-hint" style="font-weight:400">— "+ adicionar mapa" lança · clique num mapa para editar</span></h3>`;
   html += matchesHTML(matchesByRound(league.matches), { interactive: true });
   content.innerHTML = html;
 
-  content.querySelectorAll(".match-row.clickable, .final-match.clickable").forEach((el) => {
-    el.addEventListener("click", () => openScoreModal(el.dataset.stage, el.dataset.id));
+  content.querySelectorAll(".map-line.clickable").forEach((el) => {
+    el.addEventListener("click", () => openMapModal(el.dataset.stage, el.dataset.match, el.dataset.map));
+  });
+  content.querySelectorAll(".map-add").forEach((el) => {
+    el.addEventListener("click", () => openMapModal(el.dataset.stage, el.dataset.match, null));
   });
 }
 
-/* ---- Modal de placar ---- */
-let scoreTarget = null;
-function openScoreModal(stage, id) {
-  const match = stage === "final" ? league.final : league.matches.find((m) => m.id === id);
-  if (!match || !match.team1 || !match.team2) return;
-  scoreTarget = { stage, matchId: id };
-  const bo = match.bestOf;
-  const target = Math.floor(bo / 2) + 1;
-  $("score-modal-title").textContent = `${match.played ? "Editar placar" : "Placar"} · MD${bo}`;
-  $("score-hint").textContent = `Melhor de ${bo} — o vencedor faz ${target} mapas.`;
-  $("score-team1-name").textContent = match.team1.name;
-  $("score-team2-name").textContent = match.team2.name;
-  $("score-team1").value = match.played ? match.score1 : 0;
-  $("score-team2").value = match.played ? match.score2 : 0;
-  $("score-error").classList.add("hidden");
-  $("score-modal").classList.add("open");
-}
-window.closeScoreModal = () => $("score-modal").classList.remove("open");
+/* ---- Modal de mapa (placar de rounds + K/D/A por jogador dos 2 times) ---- */
+let mapTarget = null;
 
-window.saveScore = async () => {
-  const err = $("score-error");
+function statTableHTML(teamName, side, nicks, stats) {
+  const rows = nicks.map((nick, i) => {
+    const s = stats[i] || {};
+    return `<div class="stat-edit-row">
+      <input class="form-input" id="map-${side}-nick-${i}" value="${escapeHtml(nick)}" placeholder="Jogador ${i + 1}">
+      <input class="form-input stat-num" id="map-${side}-k-${i}" type="number" min="0" value="${escapeHtml(s.k ?? 0)}" aria-label="Kills">
+      <input class="form-input stat-num" id="map-${side}-d-${i}" type="number" min="0" value="${escapeHtml(s.d ?? 0)}" aria-label="Mortes">
+      <input class="form-input stat-num" id="map-${side}-a-${i}" type="number" min="0" value="${escapeHtml(s.a ?? 0)}" aria-label="Assistências">
+    </div>`;
+  }).join("");
+  return `<div class="map-stats-team">
+    <h4>${escapeHtml(teamName)}</h4>
+    <div class="stat-edit-row stat-edit-head"><span>Nick</span><span>K</span><span>M</span><span>A</span></div>
+    ${rows}
+  </div>`;
+}
+
+function openMapModal(stage, matchId, mapId) {
+  const match = stage === "final" ? league.final : league.matches.find((m) => m.id === matchId);
+  if (!match || !match.team1 || !match.team2) return;
+  const t1 = teams.find((t) => t.id === match.team1.id);
+  const t2 = teams.find((t) => t.id === match.team2.id);
+  const existing = mapId ? (match.maps || []).find((m) => m.id === mapId) : null;
+
+  const nicks1 = existing ? existing.players1.map((p) => p.nick) : (t1?.players || []);
+  const nicks2 = existing ? existing.players2.map((p) => p.nick) : (t2?.players || []);
+  const stats1 = existing ? existing.players1 : [];
+  const stats2 = existing ? existing.players2 : [];
+
+  mapTarget = { stage, matchId, mapId: mapId || null, count1: nicks1.length, count2: nicks2.length };
+
+  // Opções de mapa (inclui o mapa atual mesmo se estiver fora do pool).
+  let opts = mapPool.slice();
+  if (existing && existing.map && !opts.includes(existing.map)) opts = [existing.map, ...opts];
+  $("map-name").innerHTML = opts
+    .map((m) => `<option value="${escapeHtml(m)}"${existing && existing.map === m ? " selected" : ""}>${escapeHtml(m)}</option>`)
+    .join("");
+
+  $("map-modal-title").textContent = `${existing ? "Editar mapa" : "Novo mapa"} · MD${match.bestOf}`;
+  $("map-team1-name").textContent = match.team1.name;
+  $("map-team2-name").textContent = match.team2.name;
+  $("map-score1").value = existing ? existing.score1 : 0;
+  $("map-score2").value = existing ? existing.score2 : 0;
+  $("map-stats").innerHTML =
+    statTableHTML(match.team1.name, "t1", nicks1, stats1) +
+    statTableHTML(match.team2.name, "t2", nicks2, stats2);
+  $("map-error").classList.add("hidden");
+  $("map-delete").classList.toggle("hidden", !existing);
+  $("map-modal").classList.add("open");
+}
+window.closeMapModal = () => $("map-modal").classList.remove("open");
+
+function readSide(side, count) {
+  const num = (id) => Math.max(0, parseInt($(id).value, 10) || 0);
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const nick = $(`map-${side}-nick-${i}`).value.trim();
+    if (!nick) continue;
+    out.push({ nick, k: num(`map-${side}-k-${i}`), d: num(`map-${side}-d-${i}`), a: num(`map-${side}-a-${i}`) });
+  }
+  return out;
+}
+
+window.saveMap = async () => {
+  const err = $("map-error");
   const show = (m) => { err.textContent = m; err.classList.remove("hidden"); };
-  const s1 = parseInt($("score-team1").value, 10);
-  const s2 = parseInt($("score-team2").value, 10);
-  if (Number.isNaN(s1) || Number.isNaN(s2)) return show("Insira um placar válido.");
+  const map = $("map-name").value;
+  const s1 = parseInt($("map-score1").value, 10);
+  const s2 = parseInt($("map-score2").value, 10);
+  if (Number.isNaN(s1) || Number.isNaN(s2)) return show("Insira o placar de rounds.");
+  const payload = {
+    map,
+    score1: s1,
+    score2: s2,
+    players1: readSide("t1", mapTarget.count1),
+    players2: readSide("t2", mapTarget.count2),
+  };
   try {
-    await reportMatch(league, teams, scoreTarget, s1, s2);
-    window.closeScoreModal();
-    toast("✅ Placar registrado!");
+    await apiSaveMap(league, teams, mapTarget, payload);
+    window.closeMapModal();
+    toast("✅ Mapa salvo!");
   } catch (e) {
     console.error(e);
     show(e.message || "Erro ao salvar.");
+  }
+};
+
+window.deleteMap = async () => {
+  if (!mapTarget?.mapId) return;
+  if (!confirm("Excluir este mapa? A série será recalculada.")) return;
+  try {
+    await apiRemoveMap(league, teams, mapTarget);
+    window.closeMapModal();
+    toast("Mapa excluído.");
+  } catch (e) {
+    console.error(e);
+    toast(e.message || "Erro ao excluir.", "error");
   }
 };
 

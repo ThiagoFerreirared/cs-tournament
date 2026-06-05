@@ -216,19 +216,25 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="score-modal">
-    <div class="modal">
-      <div class="modal-header"><h2 class="modal-title" id="score-modal-title">Registrar Resultado</h2><button class="modal-close" onclick="closeScoreModal()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-      <div class="score-input-row">
-        <div><div style="font-family:var(--font-display);font-weight:700;text-align:center;margin-bottom:var(--space-3)" id="score-team1-name">Time 1</div><input class="form-input score-number" type="number" min="0" max="99" id="score-team1" value="0" /></div>
-        <div class="vs">VS</div>
-        <div><div style="font-family:var(--font-display);font-weight:700;text-align:center;margin-bottom:var(--space-3)" id="score-team2-name">Time 2</div><input class="form-input score-number" type="number" min="0" max="9" id="score-team2" value="0" /></div>
+  <div class="modal-overlay" id="map-modal">
+    <div class="modal modal-lg">
+      <div class="modal-header"><h2 class="modal-title" id="map-modal-title">Mapa</h2><button class="modal-close" onclick="closeMapModal()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div class="form-group">
+        <label class="form-label" for="map-name">Mapa</label>
+        <select class="form-input" id="map-name"></select>
       </div>
-      <div id="score-hint" class="form-hint" style="text-align:center;margin-top:var(--space-3)"></div>
-      <div id="score-error" class="form-error hidden" style="margin-top:var(--space-2)"></div>
+      <div class="score-input-row">
+        <div><div style="font-family:var(--font-display);font-weight:700;text-align:center;margin-bottom:var(--space-3)" id="map-team1-name">Time 1</div><input class="form-input score-number" type="number" min="0" max="99" id="map-score1" value="0" /></div>
+        <div class="vs">VS</div>
+        <div><div style="font-family:var(--font-display);font-weight:700;text-align:center;margin-bottom:var(--space-3)" id="map-team2-name">Time 2</div><input class="form-input score-number" type="number" min="0" max="99" id="map-score2" value="0" /></div>
+      </div>
+      <div class="form-hint" style="text-align:center;margin-top:var(--space-2)">Placar de rounds — o vencedor faz ≥13 (overtime ok).</div>
+      <div id="map-stats"></div>
+      <div id="map-error" class="form-error hidden" style="margin-top:var(--space-2)"></div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeScoreModal()">Cancelar</button>
-        <button class="btn btn-primary" onclick="saveScore()">Salvar Resultado</button>
+        <button class="btn btn-danger btn-sm hidden" id="map-delete" onclick="deleteMap()" style="margin-right:auto">Excluir mapa</button>
+        <button class="btn btn-secondary" onclick="closeMapModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveMap()">Salvar mapa</button>
       </div>
     </div>
   </div>

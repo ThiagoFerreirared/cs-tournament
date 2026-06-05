@@ -26,7 +26,7 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db } from "./firebase.js";
-import { createLeague, applyMatchResult } from "./league.js";
+import { createLeague, upsertMap, removeMap as leagueRemoveMap } from "./league.js";
 import { tournament } from "./config.js";
 
 const settingsRef = doc(db, "tournament", "main");
@@ -176,23 +176,35 @@ export async function generateLeague(teams, { random = true } = {}) {
   });
 }
 
-/**
- * Registra o resultado de uma partida (fase de pontos ou final), recalcula a
- * classificação/final e atualiza fase/campeão de forma atômica.
- * @param {{matches, final}} league  estado atual
- * @param {Array} teams              lista completa de times
- * @param {{stage:"rr"|"final", matchId?:string}} target
- */
-export async function reportMatch(league, teams, target, score1, score2) {
-  const r = applyMatchResult(league, teams, target, score1, score2);
+/** Persiste o estado recalculado da liga (mapas, final, fase, campeão). */
+async function persistLeagueState(r) {
   await setDoc(leagueRef, { matches: r.matches, final: r.final, updatedAt: serverTimestamp() });
-
   const phase = r.champion ? "Finalizado" : r.final?.team1 ? "Final" : "Fase de pontos";
   await updateDoc(settingsRef, {
     champion: r.champion || null,
     phase,
     updatedAt: serverTimestamp(),
   });
+}
+
+/**
+ * Adiciona um mapa novo a uma série (ou edita um existente, se target.mapId),
+ * recalcula classificação/final/campeão e persiste de forma atômica.
+ * @param {{matches, final}} league  estado atual
+ * @param {Array} teams              lista completa de times
+ * @param {{stage:"rr"|"final", matchId?:string, mapId?:string}} target
+ * @param {{map, score1, score2, players1, players2}} payload
+ */
+export async function saveMap(league, teams, target, payload) {
+  const r = upsertMap(league, teams, target, payload);
+  await persistLeagueState(r);
+  return r;
+}
+
+/** Remove um mapa de uma série e persiste o novo estado. */
+export async function removeMap(league, teams, target) {
+  const r = leagueRemoveMap(league, teams, target);
+  await persistLeagueState(r);
   return r;
 }
 

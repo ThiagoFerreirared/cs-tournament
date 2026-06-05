@@ -62,6 +62,21 @@ export const tournament = {
   author: "Thiago Ferreira",
 };
 
+/**
+ * Pool de mapas (Active Duty CS2). Usado no registro de cada mapa de uma
+ * série. Edite à vontade conforme o pool vigente do campeonato.
+ */
+export const mapPool = [
+  "Ancient",
+  "Anubis",
+  "Dust2",
+  "Inferno",
+  "Mirage",
+  "Nuke",
+  "Overpass",
+  "Train",
+];
+
 /** Nome completo composto, ex.: "1º Campeonato Lumix Fibra CS2". */
 export const fullName = `${tournament.edition} ${tournament.brand}`;
 
